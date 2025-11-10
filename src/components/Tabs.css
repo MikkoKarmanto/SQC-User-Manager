@@ -1,0 +1,107 @@
+.tabs-container {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.tabs-header {
+  display: flex;
+  gap: 4px;
+  border-bottom: 2px solid #e5e7eb;
+  background: #f9fafb;
+  padding: 8px 16px 0;
+  border-radius: 8px 8px 0 0;
+}
+
+.tab-button {
+  padding: 12px 20px;
+  background: none;
+  border: none;
+  border-bottom: 3px solid transparent;
+  color: #6b7280;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  position: relative;
+  margin-bottom: -2px;
+}
+
+.tab-button:hover {
+  color: #374151;
+  background: rgba(0, 0, 0, 0.02);
+  border-radius: 6px 6px 0 0;
+}
+
+.tab-button.active {
+  color: #2563eb;
+  border-bottom-color: #2563eb;
+  background: white;
+  border-radius: 6px 6px 0 0;
+}
+
+.tab-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  background: #e5e7eb;
+  color: #374151;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.tab-button.active .tab-badge {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.tabs-content {
+  background: white;
+  border-radius: 0 0 8px 8px;
+  min-height: 200px;
+}
+
+/* Dark mode */
+@media (prefers-color-scheme: dark) {
+  .tabs-header {
+    border-bottom-color: #374151;
+    background: #111827;
+  }
+
+  .tab-button {
+    color: #9ca3af;
+  }
+
+  .tab-button:hover {
+    color: #e5e7eb;
+    background: rgba(255, 255, 255, 0.05);
+  }
+
+  .tab-button.active {
+    color: #60a5fa;
+    border-bottom-color: #60a5fa;
+    background: #1f2937;
+  }
+
+  .tab-badge {
+    background: #374151;
+    color: #e5e7eb;
+  }
+
+  .tab-button.active .tab-badge {
+    background: #1e3a8a;
+    color: #93c5fd;
+  }
+
+  .tabs-content {
+    background: #1f2937;
+  }
+}

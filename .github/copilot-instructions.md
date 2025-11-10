@@ -1,0 +1,30 @@
+# SQC-User-Manager Copilot Guide
+
+- **Stack Snapshot**: Desktop app built with Tauri 2, Vite 7, and React 19 TypeScript; UI lives in `src/`, Rust backend crate in `src-tauri/`.
+- **Frontend Entry**: `src/main.tsx` mounts `App`, which wires a `HashRouter` layout exported from `src/App.tsx`.
+- **UI Flow**: `App.tsx` renders the navigation shell and routes to `src/pages/UsersPage.tsx` (placeholder workspace) and `src/pages/SettingsPage.tsx`.
+- **Settings Storage**: `SettingsPage` saves tenant URL/API key through helpers in `src/services/settingsStore.ts`, which wraps the `@tauri-apps/plugin-store` lazy store.
+- **State Handling**: Hooks like `useState` manage form inputs; mirror that pattern or lift state before wiring new commands.
+- **Command Bridge**: The Rust side exposes `get_safeq_settings`, `list_safeq_users`, `list_auth_providers`, and `list_users_for_provider` in `src-tauri/src/lib.rs`. These use `src-tauri/src/safeq_api.rs` to call the SAFEQ Cloud API via port `7300`.
+- **Backend Client**: `src-tauri/src/safeq_api.rs` performs HTTP requests with `reqwest` (rustls TLS) and authenticates with the `X-Api-Key` header. The API requires a three-step authentication flow: 1) GET `/api/v1/account` for account ID, 2) GET `/api/v1/authproviders?accountid=X` for provider list, 3) GET `/api/v1/users/all?providerid=Y` for users by provider.
+- **Users Page**: `src/pages/UsersPage.tsx` displays users grouped by authentication provider in a tab interface. Each tab represents a provider (Local, Entra ID, etc.) and loads users independently. Uses `src/components/Tabs.tsx`, `src/components/UserTable.tsx`, and `src/components/UserDetailsModal.tsx` for the UI.
+- **Environment Persistence**: The store plugin persists to `safeq-settings.json`; backend commands that call SAFEQ should read from the same file (or accept a payload) to avoid duplicating credential state.
+- **Adding Commands**: Attribute new Rust functions with the `tauri::command` macro and include them in the `tauri::generate_handler!` invocation before calling them from React.
+- **Type Safety**: Use `invoke<MyType>(...)` so TypeScript knows the shape coming back from Rust.
+- **Rust Builder**: `run()` in `src-tauri/src/lib.rs` wires plugins and handlers; use `.plugin(...)` and `.invoke_handler(...)` there instead of editing `main.rs`.
+- **Plugins**: `tauri_plugin_opener::init()` and `tauri_plugin_store::Builder::default().build()` are registered in `run()`; grant extra permissions by editing `src-tauri/capabilities/default.json`.
+- **Config Files**: `src-tauri/tauri.conf.json` dictates window defaults, dev port (1420), and build hooks that call `npm run dev/build`.
+- **Static Assets**: Drop files in `public/` for passthrough serving; Vite copies them into the `dist/` consumed by Tauri.
+- **TS Config**: `tsconfig.json` runs in bundler mode with `strict` on; heed `noUnused*` warnings or the app fails `npm run build`.
+- **React Version Notes**: React 19 already uses the `react-dom/client` root API; avoid legacy render helpers.
+- **Dev Workflow**: `npm install` once, then `npm run dev` for a browser-only preview when you do not need Rust.
+- **Desktop Dev**: `npm run tauri dev` compiles Rust and launches the desktop shell, automatically running the Vite dev server per `tauri.conf.json`.
+- **Production Build**: `npm run build` emits the web bundle; `npm run tauri build` wraps everything into native artifacts.
+- **Rust Crate Layout**: `src-tauri/Cargo.toml` exposes the library as `sqc_user_manager_lib`; `src-tauri/src/main.rs` simply calls `run()`—modify logic in the lib, not the bin.
+- **Error Surfaces**: `vite.config.ts` keeps `clearScreen: false` so Cargo errors show in the terminal; leave that in place when tweaking the dev server.
+- **Ports & HMR**: Vite server binds to 1420/1421; `TAURI_DEV_HOST` env enables remote HMR—set it when debugging on devices.
+- **Styling**: `src/App.css` now defines the navigation shell and helpers (status badges, cards). Extend those classes instead of re-adding global resets.
+- **Routing**: Routing is already in place via `react-router-dom`; add additional pages under `src/pages/` and register them in `App.tsx`.
+- **Env Artifacts**: Avoid writing to `.env` without updating `tauri.conf.json` so Tauri can forward the values during builds.
+- **Interop Checklist**: Whenever you add a feature that crosses the JS/Rust boundary, update both the React call site and `tauri::generate_handler!` list, and ensure the command name is whitelisted in `invoke`.
+- **Docs Gap**: README is template-only—record any non-obvious workflow changes here so future agents do not need to rediscover them.
