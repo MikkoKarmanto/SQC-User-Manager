@@ -22,3 +22,10 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Tauri
+# Config files might contain sensitive information
+safeq-settings.json
+
+# Rust
+target/
