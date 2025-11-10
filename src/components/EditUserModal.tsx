@@ -245,7 +245,7 @@ function EditUserModal({ user, onClose, onSuccess }: EditUserModalProps) {
                 )}
               </div>
             </div>
-            <p className="helper-text">PIN is a numeric code (detailtype=5)</p>
+            <p className="helper-text">PIN is a numeric code</p>
           </div>
 
           {/* OTP Section */}
@@ -278,7 +278,7 @@ function EditUserModal({ user, onClose, onSuccess }: EditUserModalProps) {
                 </div>
               </div>
             )}
-            <p className="helper-text">OTP is an alphanumeric code (detailtype=10) - not returned by API</p>
+            <p className="helper-text">OTP is an alphanumeric code</p>
           </div>
         </div>
 

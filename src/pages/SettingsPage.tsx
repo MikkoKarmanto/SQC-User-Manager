@@ -166,7 +166,7 @@ function SettingsPage() {
             onChange={(e) => setPinLength(parseInt(e.target.value) || 4)}
             disabled={isLoading || isSaving}
           />
-          <span className="helper-text">Number of digits for generated PINs (4-8 digits, numeric only, detailtype=5).</span>
+          <span className="helper-text">Number of digits for generated PINs (4-8 digits, numeric only).</span>
         </label>
 
         <div className="settings-actions">
