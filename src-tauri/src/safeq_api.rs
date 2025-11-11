@@ -4,10 +4,10 @@ use crate::generator::{
     generate_pin as gen_pin, generate_short_id as gen_short_id, PinSettings, ShortIdSettings,
 };
 use crate::settings::{load_safeq_settings, SafeQSettings, SettingsLoadError};
+use crate::url_utils::UrlUtils;
 use reqwest::{Client, StatusCode};
 use serde_json::Value;
 use tauri::AppHandle;
-use url::Url;
 
 const USER_AGENT: &str = "SQC-User-Manager/0.1";
 const ACCOUNT_PATH: &str = "api/v1/account";
@@ -47,7 +47,8 @@ impl SafeQClient {
     }
 
     pub fn from_settings(settings: SafeQSettings) -> Result<Self, SafeQApiError> {
-        let base_url = sanitize_base_url(&settings.tenant_url)?;
+        let base_url = UrlUtils::build_base_url(&settings.tenant_url, DEFAULT_API_PORT)
+            .map_err(SafeQApiError::InvalidBaseUrl)?;
         let client = Client::builder()
             .user_agent(USER_AGENT)
             .build()
@@ -404,38 +405,7 @@ impl std::error::Error for SafeQApiError {
     }
 }
 
-fn sanitize_base_url(value: &str) -> Result<String, SafeQApiError> {
-    let trimmed = value.trim();
-    if trimmed.is_empty() {
-        return Err(SafeQApiError::MissingSettings);
-    }
 
-    let parsed = Url::parse(trimmed).map_err(SafeQApiError::InvalidBaseUrl)?;
-
-    let scheme = parsed.scheme();
-    let host = parsed
-        .host_str()
-        .ok_or_else(|| SafeQApiError::InvalidBaseUrl(url::ParseError::EmptyHost))?;
-    let port = parsed.port().unwrap_or(DEFAULT_API_PORT);
-
-    let mut normalized = format!("{}://{}:{}", scheme, host, port);
-
-    let mut path = parsed.path().trim_matches('/');
-    if path.is_empty() {
-        path = "";
-    }
-
-    if !path.is_empty() {
-        normalized.push('/');
-        normalized.push_str(path);
-    }
-
-    let normalized = normalized.trim_end_matches('/').to_string();
-
-    Url::parse(&normalized).map_err(SafeQApiError::InvalidBaseUrl)?;
-
-    Ok(normalized)
-}
 
 fn truncate_body(body: &str) -> String {
     let trimmed = body.trim();

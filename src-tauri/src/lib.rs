@@ -1,6 +1,7 @@
 mod generator;
 mod safeq_api;
 mod settings;
+mod url_utils;
 
 #[tauri::command]
 fn get_safeq_settings(app: tauri::AppHandle) -> Result<Option<settings::SafeQSettings>, String> {

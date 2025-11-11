@@ -3,7 +3,8 @@ use std::fmt;
 use serde::{Deserialize, Serialize};
 use tauri::AppHandle;
 use tauri_plugin_store::StoreExt;
-use url::Url;
+
+use crate::url_utils::UrlUtils;
 
 const SETTINGS_FILE: &str = "safeq-settings.json";
 const SETTINGS_KEY: &str = "safeqCredentials";
@@ -84,7 +85,7 @@ pub fn load_safeq_settings(app: &AppHandle) -> Result<Option<SafeQSettings>, Set
         let stored: StoredSafeQSettings =
             serde_json::from_str(&raw_value.to_string()).map_err(SettingsLoadError::Deserialize)?;
 
-        let tenant_url = normalize_tenant_url(&stored.tenant_url);
+        let tenant_url = UrlUtils::normalize_tenant_url(&stored.tenant_url);
         let api_key = stored.api_key.trim().to_owned();
 
         if tenant_url.is_empty() && api_key.is_empty() {
@@ -114,39 +115,4 @@ pub fn load_safeq_settings(app: &AppHandle) -> Result<Option<SafeQSettings>, Set
     }
 }
 
-fn normalize_tenant_url(candidate: &str) -> String {
-    let trimmed = candidate.trim();
-    if trimmed.is_empty() {
-        return String::new();
-    }
 
-    match Url::parse(trimmed) {
-        Ok(parsed) => {
-            let host = match parsed.host_str() {
-                Some(host) if !host.is_empty() => host,
-                _ => return trimmed.to_string(),
-            };
-
-            let mut authority = host.to_owned();
-            if let Some(port) = parsed.port() {
-                authority.push(':');
-                authority.push_str(&port.to_string());
-            }
-
-            let path = match parsed.path() {
-                "/" => "",
-                other => other,
-            };
-
-            let mut normalized = format!("{}://{}{}", parsed.scheme(), authority, path);
-
-            if normalized.ends_with('/') {
-                // Mirror the frontend normalization by trimming a single trailing slash.
-                normalized.pop();
-            }
-
-            normalized
-        }
-        Err(_) => trimmed.to_string(),
-    }
-}

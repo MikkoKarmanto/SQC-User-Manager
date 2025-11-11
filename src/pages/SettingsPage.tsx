@@ -1,8 +1,6 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { loadSettings, normalizeTenantUrl, saveSettings, type SafeQSettings } from "../services/settingsStore";
 
-const HTTPS_PREFIX = /^https:\/\//i;
-
 type Notice = {
   tone: "success" | "error";
   message: string;
@@ -204,10 +202,6 @@ function prepareSettings(
     return { problem: "Tenant URL is required." };
   }
 
-  if (!HTTPS_PREFIX.test(normalizedUrl)) {
-    return { problem: "Tenant URL must begin with https://." };
-  }
-
   try {
     // Throws if invalid
     new URL(normalizedUrl);
@@ -235,8 +229,7 @@ function normalizeTenantUrlWithFallback(input: string): string {
     return "";
   }
 
-  const value = HTTPS_PREFIX.test(candidate) ? candidate : `https://${candidate}`;
-  return normalizeTenantUrl(value);
+  return normalizeTenantUrl(candidate);
 }
 
 function toErrorMessage(error: unknown): string {

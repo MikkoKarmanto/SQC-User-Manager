@@ -67,8 +67,11 @@ export function normalizeTenantUrl(input: string): string {
     return "";
   }
 
+  // If no scheme is provided, default to https
+  const urlWithScheme = trimmed.includes("://") ? trimmed : `https://${trimmed}`;
+
   try {
-    const url = new URL(trimmed);
+    const url = new URL(urlWithScheme);
     const normalized = `${url.protocol}//${url.host}${url.pathname}`.replace(/\/$/, "");
     return normalized;
   } catch (error) {
