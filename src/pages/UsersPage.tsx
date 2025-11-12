@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useMemo } from "react";
 import { listAuthProviders, listUsersForProvider } from "../services/safeqClient";
 import { extractUsers, type SafeQAuthProvider, type SafeQUser } from "../types/safeq";
 import UserTable from "../components/UserTable";
 import EditUserModal from "../components/EditUserModal";
 import Tabs, { type Tab } from "../components/Tabs";
+import UserFilters, { type FilterOptions, type SortField, type SortDirection } from "../components/UserFilters";
 
 interface ProviderData {
   provider: SafeQAuthProvider;
@@ -21,6 +22,10 @@ function UsersPage() {
   const [selectedUser, setSelectedUser] = useState<SafeQUser | null>(null);
   const [lastFetchedAt, setLastFetchedAt] = useState<Date | null>(null);
   const [selectedUserIds, setSelectedUserIds] = useState<Set<number>>(new Set());
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filters, setFilters] = useState<FilterOptions>({});
+  const [sortField, setSortField] = useState<SortField>("userName");
+  const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
 
   const fetchProviders = useCallback(async () => {
     setIsLoadingProviders(true);
@@ -107,9 +112,73 @@ function UsersPage() {
   const handleTabChange = (tabId: string) => {
     const providerId = parseInt(tabId, 10);
     setActiveProviderId(providerId);
-    // Clear selection when switching tabs
+    // Clear selection and filters when switching tabs
     setSelectedUserIds(new Set());
+    setSearchQuery("");
+    setFilters({});
   };
+
+  const handleSortChange = (field: SortField, direction?: SortDirection) => {
+    if (direction) {
+      setSortField(field);
+      setSortDirection(direction);
+    } else {
+      // Toggle direction if clicking same field
+      if (field === sortField) {
+        setSortDirection(sortDirection === "asc" ? "desc" : "asc");
+      } else {
+        setSortField(field);
+        setSortDirection("asc");
+      }
+    }
+  };
+
+  // Filter and search users while preserving selection
+  const filteredUsers = useMemo(() => {
+    if (!activeProviderId) return [];
+    
+    const activeData = providerData.get(activeProviderId);
+    if (!activeData) return [];
+    
+    let result = activeData.users;
+    
+    // Apply search
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      result = result.filter(user => 
+        user.userName?.toLowerCase().includes(query) ||
+        user.fullName?.toLowerCase().includes(query) ||
+        user.email?.toLowerCase().includes(query)
+      );
+    }
+    
+    // Apply filters
+    if (filters.hasEmail !== null && filters.hasEmail !== undefined) {
+      result = result.filter(user => 
+        filters.hasEmail ? !!user.email : !user.email
+      );
+    }
+    
+    if (filters.hasCard !== null && filters.hasCard !== undefined) {
+      result = result.filter(user => 
+        filters.hasCard ? (user.cards && user.cards.length > 0) : (!user.cards || user.cards.length === 0)
+      );
+    }
+    
+    if (filters.hasPin !== null && filters.hasPin !== undefined) {
+      result = result.filter(user => 
+        filters.hasPin ? !!user.shortId : !user.shortId
+      );
+    }
+    
+    if (filters.hasOtp !== null && filters.hasOtp !== undefined) {
+      result = result.filter(user => 
+        filters.hasOtp ? !!user.otp : !user.otp
+      );
+    }
+    
+    return result;
+  }, [activeProviderId, providerData, searchQuery, filters]);
 
   const handleRefresh = async () => {
     if (activeProviderId) {
@@ -137,6 +206,7 @@ function UsersPage() {
   }));
 
   const activeData = activeProviderId ? providerData.get(activeProviderId) : null;
+  const totalUsers = activeData?.users.length || 0;
 
   return (
     <section className="page">
@@ -154,7 +224,11 @@ function UsersPage() {
             {isLoadingProviders ? "Loading..." : "Refresh All"}
           </button>
           {lastFetchedAt && <span className="timestamp">Providers loaded {lastFetchedAt.toLocaleString()}</span>}
-          {activeData && activeData.users.length > 0 && !activeData.isLoading && <span className="timestamp">{activeData.users.length} users</span>}
+          {activeData && !activeData.isLoading && (
+            <span className="timestamp">
+              {filteredUsers.length !== totalUsers ? `${filteredUsers.length} of ${totalUsers}` : totalUsers} users
+            </span>
+          )}
         </div>
 
         {providersError ? <div className="status error">{providersError}</div> : null}
@@ -174,12 +248,28 @@ function UsersPage() {
             )}
 
             {activeData && activeData.users.length > 0 && (
-              <UserTable 
-                users={activeData.users} 
-                onUserSelect={setSelectedUser} 
-                selectedUserIds={selectedUserIds}
-                onSelectionChange={setSelectedUserIds}
-              />
+              <>
+                <UserFilters
+                  searchQuery={searchQuery}
+                  onSearchChange={setSearchQuery}
+                  filters={filters}
+                  onFiltersChange={setFilters}
+                  sortField={sortField}
+                  sortDirection={sortDirection}
+                  onSortChange={handleSortChange}
+                  totalUsers={totalUsers}
+                  filteredUsers={filteredUsers.length}
+                />
+                <UserTable 
+                  users={filteredUsers} 
+                  onUserSelect={setSelectedUser} 
+                  selectedUserIds={selectedUserIds}
+                  onSelectionChange={setSelectedUserIds}
+                  sortField={sortField}
+                  sortDirection={sortDirection}
+                  onSortChange={(field) => handleSortChange(field)}
+                />
+              </>
             )}
           </Tabs>
         )}

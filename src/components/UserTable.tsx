@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import type { SafeQUser } from "../types/safeq";
+import type { SortField, SortDirection } from "./UserFilters";
 import "./UserTable.css";
 
 interface UserTableProps {
@@ -7,16 +8,44 @@ interface UserTableProps {
   onUserSelect?: (user: SafeQUser) => void;
   selectedUserIds?: Set<number>;
   onSelectionChange?: (selectedIds: Set<number>) => void;
+  sortField?: SortField;
+  sortDirection?: SortDirection;
+  onSortChange?: (field: SortField) => void;
 }
 
-function UserTable({ users, onUserSelect, selectedUserIds = new Set(), onSelectionChange }: UserTableProps) {
+function UserTable({ 
+  users, 
+  onUserSelect, 
+  selectedUserIds = new Set(), 
+  onSelectionChange,
+  sortField = "userName",
+  sortDirection = "asc",
+  onSortChange
+}: UserTableProps) {
   const sortedUsers = useMemo(() => {
     return [...users].sort((a, b) => {
-      const nameA = a.userName?.toLowerCase() || "";
-      const nameB = b.userName?.toLowerCase() || "";
-      return nameA.localeCompare(nameB);
+      let aVal = "";
+      let bVal = "";
+      
+      switch (sortField) {
+        case "userName":
+          aVal = a.userName?.toLowerCase() || "";
+          bVal = b.userName?.toLowerCase() || "";
+          break;
+        case "fullName":
+          aVal = a.fullName?.toLowerCase() || "";
+          bVal = b.fullName?.toLowerCase() || "";
+          break;
+        case "email":
+          aVal = a.email?.toLowerCase() || "";
+          bVal = b.email?.toLowerCase() || "";
+          break;
+      }
+      
+      const comparison = aVal.localeCompare(bVal);
+      return sortDirection === "asc" ? comparison : -comparison;
     });
-  }, [users]);
+  }, [users, sortField, sortDirection]);
 
   const handleSelectAll = (checked: boolean) => {
     if (!onSelectionChange) return;
@@ -43,6 +72,21 @@ function UserTable({ users, onUserSelect, selectedUserIds = new Set(), onSelecti
 
   const allSelected = sortedUsers.length > 0 && sortedUsers.every(u => selectedUserIds.has(u.id));
   const someSelected = sortedUsers.some(u => selectedUserIds.has(u.id)) && !allSelected;
+
+  const renderSortableHeader = (label: string, field: SortField) => {
+    const isSorted = sortField === field;
+    const arrow = isSorted ? (sortDirection === "asc" ? " ↑" : " ↓") : "";
+    
+    return (
+      <th
+        className={onSortChange ? "sortable" : ""}
+        onClick={() => onSortChange?.(field)}
+        title={onSortChange ? `Sort by ${label}` : undefined}
+      >
+        {label}{arrow}
+      </th>
+    );
+  };
 
   if (users.length === 0) {
     return (
@@ -73,9 +117,9 @@ function UserTable({ users, onUserSelect, selectedUserIds = new Set(), onSelecti
                 />
               </th>
             )}
-            <th>Username</th>
-            <th>Full Name</th>
-            <th>Email</th>
+            {renderSortableHeader("Username", "userName")}
+            {renderSortableHeader("Full Name", "fullName")}
+            {renderSortableHeader("Email", "email")}
             <th>Actions</th>
           </tr>
         </thead>

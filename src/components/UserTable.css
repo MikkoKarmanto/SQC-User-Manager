@@ -24,6 +24,16 @@
   white-space: nowrap;
 }
 
+.user-table th.sortable {
+  cursor: pointer;
+  user-select: none;
+  transition: background-color 0.15s ease;
+}
+
+.user-table th.sortable:hover {
+  background: #f3f4f6;
+}
+
 .user-table .checkbox-column {
   width: 40px;
   text-align: center;
@@ -191,6 +201,10 @@
 
   .user-table th {
     color: #e5e7eb;
+  }
+
+  .user-table th.sortable:hover {
+    background: #1f2937;
   }
 
   .user-table tbody tr {
