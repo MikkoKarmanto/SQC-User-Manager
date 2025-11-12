@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useState, useMemo } from "react";
-import { listAuthProviders, listUsersForProvider } from "../services/safeqClient";
+import { listAuthProviders, listUsersForProvider, generateBulkPins, generateBulkOtps } from "../services/safeqClient";
 import { extractUsers, type SafeQAuthProvider, type SafeQUser } from "../types/safeq";
 import UserTable from "../components/UserTable";
 import EditUserModal from "../components/EditUserModal";
 import Tabs, { type Tab } from "../components/Tabs";
 import UserFilters, { type FilterOptions, type SortField, type SortDirection } from "../components/UserFilters";
+import BulkActionsBar from "../components/BulkActionsBar";
 
 interface ProviderData {
   provider: SafeQAuthProvider;
@@ -26,6 +27,8 @@ function UsersPage() {
   const [filters, setFilters] = useState<FilterOptions>({});
   const [sortField, setSortField] = useState<SortField>("userName");
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
+  const [isBulkProcessing, setIsBulkProcessing] = useState(false);
+  const [bulkMessage, setBulkMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   const fetchProviders = useCallback(async () => {
     setIsLoadingProviders(true);
@@ -180,6 +183,94 @@ function UsersPage() {
     return result;
   }, [activeProviderId, providerData, searchQuery, filters]);
 
+  const selectedUsers = useMemo(() => {
+    if (!activeProviderId) return [];
+    const activeData = providerData.get(activeProviderId);
+    if (!activeData) return [];
+    
+    return activeData.users.filter(user => selectedUserIds.has(user.id));
+  }, [activeProviderId, providerData, selectedUserIds]);
+
+  const handleBulkGeneratePins = async () => {
+    if (selectedUsers.length === 0) return;
+    
+    setIsBulkProcessing(true);
+    setBulkMessage(null);
+    
+    try {
+      const usersToUpdate = selectedUsers.map(user => ({
+        userName: user.userName,
+        providerId: user.providerId || null,
+      }));
+      
+      const result = await generateBulkPins(usersToUpdate);
+      
+      if (result.failed > 0) {
+        setBulkMessage({
+          type: "error",
+          text: `PIN generation completed: ${result.success} successful, ${result.failed} failed`,
+        });
+      } else {
+        setBulkMessage({
+          type: "success",
+          text: `Successfully generated PINs for ${result.success} user${result.success !== 1 ? "s" : ""}`,
+        });
+      }
+      
+      // Refresh users after bulk operation
+      if (activeProviderId) {
+        await fetchUsersForProvider(activeProviderId);
+      }
+    } catch (err) {
+      setBulkMessage({
+        type: "error",
+        text: err instanceof Error ? err.message : "Failed to generate PINs",
+      });
+    } finally {
+      setIsBulkProcessing(false);
+    }
+  };
+
+  const handleBulkGenerateOtps = async () => {
+    if (selectedUsers.length === 0) return;
+    
+    setIsBulkProcessing(true);
+    setBulkMessage(null);
+    
+    try {
+      const usersToUpdate = selectedUsers.map(user => ({
+        userName: user.userName,
+        providerId: user.providerId || null,
+      }));
+      
+      const result = await generateBulkOtps(usersToUpdate);
+      
+      if (result.failed > 0) {
+        setBulkMessage({
+          type: "error",
+          text: `OTP generation completed: ${result.success} successful, ${result.failed} failed`,
+        });
+      } else {
+        setBulkMessage({
+          type: "success",
+          text: `Successfully generated OTPs for ${result.success} user${result.success !== 1 ? "s" : ""}`,
+        });
+      }
+      
+      // Refresh users after bulk operation
+      if (activeProviderId) {
+        await fetchUsersForProvider(activeProviderId);
+      }
+    } catch (err) {
+      setBulkMessage({
+        type: "error",
+        text: err instanceof Error ? err.message : "Failed to generate OTPs",
+      });
+    } finally {
+      setIsBulkProcessing(false);
+    }
+  };
+
   const handleRefresh = async () => {
     if (activeProviderId) {
       const updatedUsers = await fetchUsersForProvider(activeProviderId);
@@ -233,6 +324,8 @@ function UsersPage() {
 
         {providersError ? <div className="status error">{providersError}</div> : null}
 
+        {bulkMessage && <div className={`status ${bulkMessage.type}`}>{bulkMessage.text}</div>}
+
         {!providersError && !isLoadingProviders && providers.length === 0 && (
           <p className="helper-text">No authentication providers found. Make sure your settings are configured correctly.</p>
         )}
@@ -268,6 +361,13 @@ function UsersPage() {
                   sortField={sortField}
                   sortDirection={sortDirection}
                   onSortChange={(field) => handleSortChange(field)}
+                />
+                <BulkActionsBar
+                  selectedCount={selectedUserIds.size}
+                  onGeneratePins={handleBulkGeneratePins}
+                  onGenerateOtps={handleBulkGenerateOtps}
+                  onClearSelection={() => setSelectedUserIds(new Set())}
+                  isProcessing={isBulkProcessing}
                 />
               </>
             )}

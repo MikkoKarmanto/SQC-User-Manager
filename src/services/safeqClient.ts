@@ -42,3 +42,11 @@ export async function createUsers(
 ): Promise<{ success: number; failed: number }> {
   return invoke("create_users", { users, autoGeneratePin, autoGenerateOtp });
 }
+
+export async function generateBulkPins(users: unknown[]): Promise<{ success: number; failed: number; errors: string[] }> {
+  return invoke("generate_bulk_pins", { users });
+}
+
+export async function generateBulkOtps(users: unknown[]): Promise<{ success: number; failed: number; errors: string[] }> {
+  return invoke("generate_bulk_otps", { users });
+}
