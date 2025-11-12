@@ -151,13 +151,11 @@ function ImportPage() {
             <Upload className="mb-4 h-12 w-12 text-muted-foreground" />
             <p className="mb-2 text-lg font-medium">Drag and drop CSV file here</p>
             <p className="mb-4 text-sm text-muted-foreground">or</p>
-            <label>
-              <Button variant="secondary" asChild>
-                <span>
-                  Browse Files
-                  <input type="file" accept=".csv" onChange={handleFileInputChange} className="hidden" />
-                </span>
+            <label htmlFor="file-upload">
+              <Button variant="secondary" type="button" onClick={() => document.getElementById('file-upload')?.click()}>
+                Browse Files
               </Button>
+              <input id="file-upload" type="file" accept=".csv" onChange={handleFileInputChange} className="hidden" />
             </label>
           </div>
 
