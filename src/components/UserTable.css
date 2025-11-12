@@ -24,6 +24,19 @@
   white-space: nowrap;
 }
 
+.user-table .checkbox-column {
+  width: 40px;
+  text-align: center;
+  padding: 12px 8px;
+}
+
+.user-table .checkbox-column input[type="checkbox"] {
+  cursor: pointer;
+  width: 16px;
+  height: 16px;
+  margin: 0;
+}
+
 .user-table tbody tr {
   border-bottom: 1px solid #e5e7eb;
   transition: background-color 0.15s ease;
@@ -31,6 +44,14 @@
 
 .user-table tbody tr:hover {
   background: #f9fafb;
+}
+
+.user-table tbody tr.selected {
+  background: #eff6ff;
+}
+
+.user-table tbody tr.selected:hover {
+  background: #dbeafe;
 }
 
 .user-table tbody tr:last-child {
@@ -178,6 +199,14 @@
 
   .user-table tbody tr:hover {
     background: #111827;
+  }
+
+  .user-table tbody tr.selected {
+    background: #1e3a5f;
+  }
+
+  .user-table tbody tr.selected:hover {
+    background: #2c4f7c;
   }
 
   .user-table td {

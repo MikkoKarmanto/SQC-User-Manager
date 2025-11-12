@@ -20,6 +20,7 @@ function UsersPage() {
   const [providersError, setProvidersError] = useState<string | null>(null);
   const [selectedUser, setSelectedUser] = useState<SafeQUser | null>(null);
   const [lastFetchedAt, setLastFetchedAt] = useState<Date | null>(null);
+  const [selectedUserIds, setSelectedUserIds] = useState<Set<number>>(new Set());
 
   const fetchProviders = useCallback(async () => {
     setIsLoadingProviders(true);
@@ -106,6 +107,8 @@ function UsersPage() {
   const handleTabChange = (tabId: string) => {
     const providerId = parseInt(tabId, 10);
     setActiveProviderId(providerId);
+    // Clear selection when switching tabs
+    setSelectedUserIds(new Set());
   };
 
   const handleRefresh = async () => {
@@ -170,7 +173,14 @@ function UsersPage() {
               <p className="helper-text">No users found for this authentication provider.</p>
             )}
 
-            {activeData && activeData.users.length > 0 && <UserTable users={activeData.users} onUserSelect={setSelectedUser} />}
+            {activeData && activeData.users.length > 0 && (
+              <UserTable 
+                users={activeData.users} 
+                onUserSelect={setSelectedUser} 
+                selectedUserIds={selectedUserIds}
+                onSelectionChange={setSelectedUserIds}
+              />
+            )}
           </Tabs>
         )}
       </div>
