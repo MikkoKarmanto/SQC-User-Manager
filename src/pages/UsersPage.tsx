@@ -3,9 +3,13 @@ import { listAuthProviders, listUsersForProvider, generateBulkPins, generateBulk
 import { extractUsers, type SafeQAuthProvider, type SafeQUser } from "../types/safeq";
 import UserTable from "../components/UserTable";
 import EditUserModal from "../components/EditUserModal";
-import Tabs, { type Tab } from "../components/Tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import UserFilters, { type FilterOptions, type SortField, type SortDirection } from "../components/UserFilters";
 import BulkActionsBar from "../components/BulkActionsBar";
+import { RefreshCw, AlertCircle, CheckCircle2 } from "lucide-react";
 
 interface ProviderData {
   provider: SafeQAuthProvider;
@@ -290,93 +294,142 @@ function UsersPage() {
     setProviderData(new Map());
   };
 
-  const tabs: Tab[] = providers.map((provider) => ({
-    id: provider.id.toString(),
-    label: provider.name || `Provider ${provider.id}`,
-    badge: providerData.get(provider.id)?.users.length,
-  }));
-
   const activeData = activeProviderId ? providerData.get(activeProviderId) : null;
   const totalUsers = activeData?.users.length || 0;
 
   return (
-    <section className="page">
-      <header className="page-header">
-        <h2>Users</h2>
-        <p>Manage SafeQ Cloud users from your tenant. View user details, groups, and properties.</p>
-      </header>
-
-      <div className="card">
-        <div className="card-actions">
-          <button type="button" onClick={handleRefresh} disabled={activeData?.isLoading || isLoadingProviders}>
-            {activeData?.isLoading ? "Loading..." : "Refresh Current"}
-          </button>
-          <button type="button" onClick={handleRefreshAll} disabled={isLoadingProviders}>
-            {isLoadingProviders ? "Loading..." : "Refresh All"}
-          </button>
-          {lastFetchedAt && <span className="timestamp">Providers loaded {lastFetchedAt.toLocaleString()}</span>}
-          {activeData && !activeData.isLoading && (
-            <span className="timestamp">
-              {filteredUsers.length !== totalUsers ? `${filteredUsers.length} of ${totalUsers}` : totalUsers} users
-            </span>
-          )}
-        </div>
-
-        {providersError ? <div className="status error">{providersError}</div> : null}
-
-        {bulkMessage && <div className={`status ${bulkMessage.type}`}>{bulkMessage.text}</div>}
-
-        {!providersError && !isLoadingProviders && providers.length === 0 && (
-          <p className="helper-text">No authentication providers found. Make sure your settings are configured correctly.</p>
-        )}
-
-        {providers.length > 0 && (
-          <Tabs tabs={tabs} activeTab={activeProviderId?.toString() || ""} onTabChange={handleTabChange}>
-            {activeData?.error ? <div className="status error">{activeData.error}</div> : null}
-
-            {activeData?.isLoading && <p className="helper-text">Loading users...</p>}
-
-            {!activeData?.error && !activeData?.isLoading && activeData && activeData.users.length === 0 && (
-              <p className="helper-text">No users found for this authentication provider.</p>
-            )}
-
-            {activeData && activeData.users.length > 0 && (
-              <>
-                <UserFilters
-                  searchQuery={searchQuery}
-                  onSearchChange={setSearchQuery}
-                  filters={filters}
-                  onFiltersChange={setFilters}
-                  sortField={sortField}
-                  sortDirection={sortDirection}
-                  onSortChange={handleSortChange}
-                  totalUsers={totalUsers}
-                  filteredUsers={filteredUsers.length}
-                />
-                <UserTable 
-                  users={filteredUsers} 
-                  onUserSelect={setSelectedUser} 
-                  selectedUserIds={selectedUserIds}
-                  onSelectionChange={setSelectedUserIds}
-                  sortField={sortField}
-                  sortDirection={sortDirection}
-                  onSortChange={(field) => handleSortChange(field)}
-                />
-                <BulkActionsBar
-                  selectedCount={selectedUserIds.size}
-                  onGeneratePins={handleBulkGeneratePins}
-                  onGenerateOtps={handleBulkGenerateOtps}
-                  onClearSelection={() => setSelectedUserIds(new Set())}
-                  isProcessing={isBulkProcessing}
-                />
-              </>
-            )}
-          </Tabs>
-        )}
+    <div className="container mx-auto max-w-7xl p-6">
+      <div className="mb-6">
+        <h2 className="text-3xl font-bold tracking-tight">Users</h2>
+        <p className="mt-2 text-muted-foreground">Manage SafeQ Cloud users from your tenant. View user details, groups, and properties.</p>
       </div>
 
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>User Management</CardTitle>
+              <CardDescription>View and manage users across authentication providers</CardDescription>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={handleRefresh} disabled={activeData?.isLoading || isLoadingProviders}>
+                <RefreshCw className={`h-4 w-4 ${activeData?.isLoading ? 'animate-spin' : ''}`} />
+                Refresh Current
+              </Button>
+              <Button variant="outline" size="sm" onClick={handleRefreshAll} disabled={isLoadingProviders}>
+                <RefreshCw className={`h-4 w-4 ${isLoadingProviders ? 'animate-spin' : ''}`} />
+                Refresh All
+              </Button>
+            </div>
+          </div>
+          {lastFetchedAt && (
+            <p className="mt-2 text-sm text-muted-foreground">
+              Providers loaded {lastFetchedAt.toLocaleString()}
+              {activeData && !activeData.isLoading && (
+                <> • {filteredUsers.length !== totalUsers ? `${filteredUsers.length} of ${totalUsers}` : totalUsers} users</>
+              )}
+            </p>
+          )}
+        </CardHeader>
+        <CardContent>
+          {providersError && (
+            <div className="mb-4 flex items-center gap-2 rounded-md border border-red-200 bg-red-50 p-4 text-red-900 dark:border-red-900 dark:bg-red-950 dark:text-red-100">
+              <AlertCircle className="h-5 w-5" />
+              <span>{providersError}</span>
+            </div>
+          )}
+
+          {bulkMessage && (
+            <div
+              className={`mb-4 flex items-center gap-2 rounded-md border p-4 ${
+                bulkMessage.type === "success"
+                  ? "border-green-200 bg-green-50 text-green-900 dark:border-green-900 dark:bg-green-950 dark:text-green-100"
+                  : "border-red-200 bg-red-50 text-red-900 dark:border-red-900 dark:bg-red-950 dark:text-red-100"
+              }`}
+            >
+              {bulkMessage.type === "success" ? <CheckCircle2 className="h-5 w-5" /> : <AlertCircle className="h-5 w-5" />}
+              <span>{bulkMessage.text}</span>
+            </div>
+          )}
+
+          {!providersError && !isLoadingProviders && providers.length === 0 && (
+            <p className="text-sm text-muted-foreground">No authentication providers found. Make sure your settings are configured correctly.</p>
+          )}
+
+          {providers.length > 0 && (
+            <Tabs value={activeProviderId?.toString() || ""} onValueChange={handleTabChange}>
+              <TabsList className="mb-4">
+                {providers.map((provider) => {
+                  const data = providerData.get(provider.id);
+                  const userCount = data?.users.length;
+                  return (
+                    <TabsTrigger key={provider.id} value={provider.id.toString()} className="gap-2">
+                      {provider.name || `Provider ${provider.id}`}
+                      {userCount !== undefined && userCount > 0 && (
+                        <Badge variant="secondary" className="ml-1">
+                          {userCount}
+                        </Badge>
+                      )}
+                    </TabsTrigger>
+                  );
+                })}
+              </TabsList>
+
+              {providers.map((provider) => (
+                <TabsContent key={provider.id} value={provider.id.toString()} className="mt-0">
+                  {activeData?.error && (
+                    <div className="mb-4 flex items-center gap-2 rounded-md border border-red-200 bg-red-50 p-4 text-red-900 dark:border-red-900 dark:bg-red-950 dark:text-red-100">
+                      <AlertCircle className="h-5 w-5" />
+                      <span>{activeData.error}</span>
+                    </div>
+                  )}
+
+                  {activeData?.isLoading && <p className="text-sm text-muted-foreground">Loading users...</p>}
+
+                  {!activeData?.error && !activeData?.isLoading && activeData && activeData.users.length === 0 && (
+                    <p className="text-sm text-muted-foreground">No users found for this authentication provider.</p>
+                  )}
+
+                  {activeData && activeData.users.length > 0 && (
+                    <>
+                      <UserFilters
+                        searchQuery={searchQuery}
+                        onSearchChange={setSearchQuery}
+                        filters={filters}
+                        onFiltersChange={setFilters}
+                        sortField={sortField}
+                        sortDirection={sortDirection}
+                        onSortChange={handleSortChange}
+                        totalUsers={totalUsers}
+                        filteredUsers={filteredUsers.length}
+                      />
+                      <UserTable
+                        users={filteredUsers}
+                        onUserSelect={setSelectedUser}
+                        selectedUserIds={selectedUserIds}
+                        onSelectionChange={setSelectedUserIds}
+                        sortField={sortField}
+                        sortDirection={sortDirection}
+                        onSortChange={(field) => handleSortChange(field)}
+                      />
+                      <BulkActionsBar
+                        selectedCount={selectedUserIds.size}
+                        onGeneratePins={handleBulkGeneratePins}
+                        onGenerateOtps={handleBulkGenerateOtps}
+                        onClearSelection={() => setSelectedUserIds(new Set())}
+                        isProcessing={isBulkProcessing}
+                      />
+                    </>
+                  )}
+                </TabsContent>
+              ))}
+            </Tabs>
+          )}
+        </CardContent>
+      </Card>
+
       <EditUserModal key={selectedUser?.id} user={selectedUser} onClose={() => setSelectedUser(null)} onSuccess={handleRefresh} />
-    </section>
+    </div>
   );
 }
 
