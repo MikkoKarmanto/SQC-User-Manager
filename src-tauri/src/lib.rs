@@ -137,6 +137,78 @@ async fn generate_user_otp(
 }
 
 #[tauri::command]
+async fn generate_bulk_pins(
+    app: tauri::AppHandle,
+    users: Vec<serde_json::Value>,
+) -> Result<serde_json::Value, String> {
+    let settings = settings::load_safeq_settings(&app)
+        .map_err(|error| error.to_string())?
+        .ok_or("Settings not configured")?;
+
+    let client = safeq_api::SafeQClient::from_settings(settings.clone())
+        .map_err(|error| error.to_string())?;
+
+    let mut success_count = 0;
+    let mut failed_count = 0;
+    let mut errors: Vec<String> = Vec::new();
+
+    for user in users {
+        let username = user["userName"].as_str().unwrap_or("");
+        let provider_id = user["providerId"].as_i64();
+
+        match client.generate_pin(username, provider_id, &settings).await {
+            Ok(_) => success_count += 1,
+            Err(e) => {
+                failed_count += 1;
+                errors.push(format!("{}: {}", username, e));
+            }
+        }
+    }
+
+    Ok(serde_json::json!({
+        "success": success_count,
+        "failed": failed_count,
+        "errors": errors
+    }))
+}
+
+#[tauri::command]
+async fn generate_bulk_otps(
+    app: tauri::AppHandle,
+    users: Vec<serde_json::Value>,
+) -> Result<serde_json::Value, String> {
+    let settings = settings::load_safeq_settings(&app)
+        .map_err(|error| error.to_string())?
+        .ok_or("Settings not configured")?;
+
+    let client = safeq_api::SafeQClient::from_settings(settings.clone())
+        .map_err(|error| error.to_string())?;
+
+    let mut success_count = 0;
+    let mut failed_count = 0;
+    let mut errors: Vec<String> = Vec::new();
+
+    for user in users {
+        let username = user["userName"].as_str().unwrap_or("");
+        let provider_id = user["providerId"].as_i64();
+
+        match client.generate_otp(username, provider_id, &settings).await {
+            Ok(_) => success_count += 1,
+            Err(e) => {
+                failed_count += 1;
+                errors.push(format!("{}: {}", username, e));
+            }
+        }
+    }
+
+    Ok(serde_json::json!({
+        "success": success_count,
+        "failed": failed_count,
+        "errors": errors
+    }))
+}
+
+#[tauri::command]
 async fn create_users(
     app: tauri::AppHandle,
     users: Vec<serde_json::Value>,
@@ -211,6 +283,8 @@ pub fn run() {
             update_user_pin,
             generate_user_pin,
             generate_user_otp,
+            generate_bulk_pins,
+            generate_bulk_otps,
             create_users
         ])
         .run(tauri::generate_context!())

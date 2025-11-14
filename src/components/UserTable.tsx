@@ -1,20 +1,92 @@
 import { useMemo } from "react";
 import type { SafeQUser } from "../types/safeq";
+import type { SortField, SortDirection } from "./UserFilters";
 import "./UserTable.css";
 
 interface UserTableProps {
   users: SafeQUser[];
   onUserSelect?: (user: SafeQUser) => void;
+  selectedUserIds?: Set<number>;
+  onSelectionChange?: (selectedIds: Set<number>) => void;
+  sortField?: SortField;
+  sortDirection?: SortDirection;
+  onSortChange?: (field: SortField) => void;
 }
 
-function UserTable({ users, onUserSelect }: UserTableProps) {
+function UserTable({ 
+  users, 
+  onUserSelect, 
+  selectedUserIds = new Set(), 
+  onSelectionChange,
+  sortField = "userName",
+  sortDirection = "asc",
+  onSortChange
+}: UserTableProps) {
   const sortedUsers = useMemo(() => {
     return [...users].sort((a, b) => {
-      const nameA = a.userName?.toLowerCase() || "";
-      const nameB = b.userName?.toLowerCase() || "";
-      return nameA.localeCompare(nameB);
+      let aVal = "";
+      let bVal = "";
+      
+      switch (sortField) {
+        case "userName":
+          aVal = a.userName?.toLowerCase() || "";
+          bVal = b.userName?.toLowerCase() || "";
+          break;
+        case "fullName":
+          aVal = a.fullName?.toLowerCase() || "";
+          bVal = b.fullName?.toLowerCase() || "";
+          break;
+        case "email":
+          aVal = a.email?.toLowerCase() || "";
+          bVal = b.email?.toLowerCase() || "";
+          break;
+      }
+      
+      const comparison = aVal.localeCompare(bVal);
+      return sortDirection === "asc" ? comparison : -comparison;
     });
-  }, [users]);
+  }, [users, sortField, sortDirection]);
+
+  const handleSelectAll = (checked: boolean) => {
+    if (!onSelectionChange) return;
+    
+    if (checked) {
+      const allIds = new Set(sortedUsers.map(u => u.id));
+      onSelectionChange(allIds);
+    } else {
+      onSelectionChange(new Set());
+    }
+  };
+
+  const handleSelectUser = (userId: number, checked: boolean) => {
+    if (!onSelectionChange) return;
+    
+    const newSelection = new Set(selectedUserIds);
+    if (checked) {
+      newSelection.add(userId);
+    } else {
+      newSelection.delete(userId);
+    }
+    onSelectionChange(newSelection);
+  };
+
+  const allSelected = sortedUsers.length > 0 && sortedUsers.every(u => selectedUserIds.has(u.id));
+  const someSelected = sortedUsers.some(u => selectedUserIds.has(u.id)) && !allSelected;
+
+  const renderSortableHeader = (label: string, field: SortField) => {
+    const isSorted = sortField === field;
+    const arrow = isSorted ? (sortDirection === "asc" ? " ↑" : " ↓") : "";
+    
+    return (
+      <th
+        className={onSortChange ? "sortable" : ""}
+        onClick={() => onSortChange?.(field)}
+        title={onSortChange ? `Sort by ${label}` : undefined}
+      >
+        {label}{arrow}
+      </th>
+    );
+  };
 
   if (users.length === 0) {
     return (
@@ -30,15 +102,40 @@ function UserTable({ users, onUserSelect }: UserTableProps) {
       <table className="user-table">
         <thead>
           <tr>
-            <th>Username</th>
-            <th>Full Name</th>
-            <th>Email</th>
+            {onSelectionChange && (
+              <th className="checkbox-column">
+                <input
+                  type="checkbox"
+                  checked={allSelected}
+                  ref={(input) => {
+                    if (input) {
+                      input.indeterminate = someSelected;
+                    }
+                  }}
+                  onChange={(e) => handleSelectAll(e.target.checked)}
+                  title={allSelected ? "Deselect all" : "Select all"}
+                />
+              </th>
+            )}
+            {renderSortableHeader("Username", "userName")}
+            {renderSortableHeader("Full Name", "fullName")}
+            {renderSortableHeader("Email", "email")}
             <th>Actions</th>
           </tr>
         </thead>
         <tbody>
           {sortedUsers.map((user) => (
-            <tr key={user.id}>
+            <tr key={user.id} className={selectedUserIds.has(user.id) ? "selected" : ""}>
+              {onSelectionChange && (
+                <td className="checkbox-column">
+                  <input
+                    type="checkbox"
+                    checked={selectedUserIds.has(user.id)}
+                    onChange={(e) => handleSelectUser(user.id, e.target.checked)}
+                    title={`Select ${user.userName}`}
+                  />
+                </td>
+              )}
               <td className="username">{user.userName || "—"}</td>
               <td>{user.fullName || "—"}</td>
               <td className="email">{user.email || "—"}</td>
@@ -54,6 +151,9 @@ function UserTable({ users, onUserSelect }: UserTableProps) {
       <div className="table-footer">
         <span className="user-count">
           {users.length} user{users.length !== 1 ? "s" : ""}
+          {onSelectionChange && selectedUserIds.size > 0 && (
+            <> • {selectedUserIds.size} selected</>
+          )}
         </span>
       </div>
     </div>
