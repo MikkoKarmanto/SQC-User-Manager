@@ -3,6 +3,10 @@ import type { ImportUser, SafeQAuthProvider } from "../types/safeq";
 import { parseCsv, readFileAsText } from "../utils/csvParser";
 import ImportGrid from "../components/ImportGrid";
 import { createUsers, listAuthProviders } from "../services/safeqClient";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { Upload, X, AlertCircle, CheckCircle2, AlertTriangle } from "lucide-react";
 
 function ImportPage() {
   const [users, setUsers] = useState<ImportUser[]>([]);
@@ -126,72 +130,93 @@ function ImportPage() {
   const validCount = users.filter((u) => u.isValid).length;
 
   return (
-    <section className="page">
-      <header className="page-header">
-        <h2>Import Users</h2>
-        <p>Bulk import users from a CSV file. Upload, review, edit, and create users in SafeQ Cloud.</p>
-      </header>
-
-      <div className="card">
-        <div
-          className={`drop-zone ${isDragging ? "drop-zone-active" : ""}`}
-          onDrop={handleDrop}
-          onDragOver={handleDragOver}
-          onDragLeave={handleDragLeave}
-        >
-          <div className="drop-zone-content">
-            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-              <polyline points="17 8 12 3 7 8" />
-              <line x1="12" y1="3" x2="12" y2="15" />
-            </svg>
-            <p className="drop-zone-title">Drag and drop CSV file here</p>
-            <p className="drop-zone-subtitle">or</p>
-            <label className="btn-file">
-              Browse Files
-              <input type="file" accept=".csv" onChange={handleFileInputChange} style={{ display: "none" }} />
-            </label>
-          </div>
-        </div>
-
-        {parseErrors.length > 0 && (
-          <div className="status error" style={{ marginTop: "16px" }}>
-            <strong>Parsing Errors:</strong>
-            <ul style={{ marginTop: "8px", paddingLeft: "20px" }}>
-              {parseErrors.map((error, i) => (
-                <li key={i}>{error}</li>
-              ))}
-            </ul>
-          </div>
-        )}
-
-        {parseWarnings.length > 0 && (
-          <div className="status warning" style={{ marginTop: "16px" }}>
-            <strong>Parsing Info:</strong>
-            <ul style={{ marginTop: "8px", paddingLeft: "20px" }}>
-              {parseWarnings.map((warning, i) => (
-                <li key={i}>{warning}</li>
-              ))}
-            </ul>
-          </div>
-        )}
-
-        {uploadStatus && (
-          <div className={`status ${uploadStatus.failed === 0 ? "success" : "warning"}`} style={{ marginTop: "16px" }}>
-            Upload complete: {uploadStatus.success} succeeded, {uploadStatus.failed} failed
-          </div>
-        )}
+    <div className="container mx-auto max-w-7xl p-6">
+      <div className="mb-6">
+        <h2 className="text-3xl font-bold tracking-tight">Import Users</h2>
+        <p className="mt-2 text-muted-foreground">Bulk import users from a CSV file. Upload, review, edit, and create users in SafeQ Cloud.</p>
       </div>
 
-      <div className="card" style={{ marginTop: "24px" }}>
-        <div className="card-actions">
-          <div style={{ display: "flex", alignItems: "center", gap: "16px", flexWrap: "wrap" }}>
-            <label style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-              <span style={{ fontWeight: 500 }}>Default Provider:</span>
+      <Card className="mb-6">
+        <CardContent className="pt-6">
+          <div
+            className={`flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed p-12 transition-colors ${
+              isDragging
+                ? "border-primary bg-primary/5"
+                : "border-muted-foreground/25 hover:border-primary hover:bg-accent"
+            }`}
+            onDrop={handleDrop}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+          >
+            <Upload className="mb-4 h-12 w-12 text-muted-foreground" />
+            <p className="mb-2 text-lg font-medium">Drag and drop CSV file here</p>
+            <p className="mb-4 text-sm text-muted-foreground">or</p>
+            <label htmlFor="file-upload">
+              <Button variant="secondary" type="button" onClick={() => document.getElementById('file-upload')?.click()}>
+                Browse Files
+              </Button>
+              <input id="file-upload" type="file" accept=".csv" onChange={handleFileInputChange} className="hidden" />
+            </label>
+          </div>
+
+          {parseErrors.length > 0 && (
+            <div className="mt-4 flex items-start gap-2 rounded-md border border-red-200 bg-red-50 p-4 text-red-900 dark:border-red-900 dark:bg-red-950 dark:text-red-100">
+              <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" />
+              <div className="flex-1">
+                <strong>Parsing Errors:</strong>
+                <ul className="mt-2 list-inside list-disc space-y-1">
+                  {parseErrors.map((error, i) => (
+                    <li key={i}>{error}</li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          )}
+
+          {parseWarnings.length > 0 && (
+            <div className="mt-4 flex items-start gap-2 rounded-md border border-yellow-200 bg-yellow-50 p-4 text-yellow-900 dark:border-yellow-900 dark:bg-yellow-950 dark:text-yellow-100">
+              <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0" />
+              <div className="flex-1">
+                <strong>Parsing Info:</strong>
+                <ul className="mt-2 list-inside list-disc space-y-1">
+                  {parseWarnings.map((warning, i) => (
+                    <li key={i}>{warning}</li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          )}
+
+          {uploadStatus && (
+            <div
+              className={`mt-4 flex items-center gap-2 rounded-md border p-4 ${
+                uploadStatus.failed === 0
+                  ? "border-green-200 bg-green-50 text-green-900 dark:border-green-900 dark:bg-green-950 dark:text-green-100"
+                  : "border-yellow-200 bg-yellow-50 text-yellow-900 dark:border-yellow-900 dark:bg-yellow-950 dark:text-yellow-100"
+              }`}
+            >
+              {uploadStatus.failed === 0 ? <CheckCircle2 className="h-5 w-5" /> : <AlertTriangle className="h-5 w-5" />}
+              <span>
+                Upload complete: {uploadStatus.success} succeeded, {uploadStatus.failed} failed
+              </span>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle>Import Configuration</CardTitle>
+          <CardDescription>Configure import options and upload users to SafeQ Cloud</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-wrap items-center gap-4">
+            <div className="flex items-center gap-2">
+              <Label className="text-sm font-medium">Default Provider:</Label>
               <select
                 value={selectedProviderId || ""}
                 onChange={(e) => setSelectedProviderId(e.target.value ? parseInt(e.target.value, 10) : null)}
-                style={{ padding: "8px 12px", borderRadius: "6px", border: "1px solid #d1d5db" }}
+                className="rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 <option value="">None (use CSV value)</option>
                 {providers.map((p) => (
@@ -200,67 +225,76 @@ function ImportPage() {
                   </option>
                 ))}
               </select>
-            </label>
-            <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer" }}>
+            </div>
+            <label className="flex cursor-pointer items-center gap-2">
               <input
                 type="checkbox"
                 checked={autoGeneratePin}
                 onChange={(e) => setAutoGeneratePin(e.target.checked)}
-                style={{ cursor: "pointer" }}
+                className="h-4 w-4 cursor-pointer rounded border-gray-300 text-primary focus:ring-2 focus:ring-ring"
               />
-              <span>Auto-generate PIN if empty</span>
+              <span className="text-sm">Auto-generate PIN if empty</span>
             </label>
-            <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer" }}>
+            <label className="flex cursor-pointer items-center gap-2">
               <input
                 type="checkbox"
                 checked={autoGenerateOtp}
                 onChange={(e) => setAutoGenerateOtp(e.target.checked)}
-                style={{ cursor: "pointer" }}
+                className="h-4 w-4 cursor-pointer rounded border-gray-300 text-primary focus:ring-2 focus:ring-ring"
               />
-              <span>Auto-generate OTP if empty</span>
+              <span className="text-sm">Auto-generate OTP if empty</span>
             </label>
-            <div style={{ marginLeft: "auto", display: "flex", gap: "12px" }}>
-              <button type="button" onClick={handleUpload} disabled={isUploading || validCount === 0}>
-                {isUploading ? "Uploading..." : `Upload ${validCount} Valid User(s)`}
-              </button>
-              <button type="button" onClick={handleClear} disabled={isUploading}>
+            <div className="ml-auto flex gap-2">
+              <Button variant="default" onClick={handleUpload} disabled={isUploading || validCount === 0}>
+                <Upload className="h-4 w-4" />
+                {isUploading ? "Uploading..." : `Upload ${validCount} Valid User${validCount !== 1 ? "s" : ""}`}
+              </Button>
+              <Button variant="outline" onClick={handleClear} disabled={isUploading}>
+                <X className="h-4 w-4" />
                 Clear All
-              </button>
+              </Button>
             </div>
           </div>
-        </div>
 
-          <ImportGrid users={users} onUpdate={setUsers} />
-        </div>
+          <div className="mt-4">
+            <ImportGrid users={users} onUpdate={setUsers} />
+          </div>
+        </CardContent>
+      </Card>
 
-      <div className="card" style={{ marginTop: "24px" }}>
-        <h3>CSV Format</h3>
-        <p style={{ marginTop: "8px", color: "#6b7280" }}>Your CSV file should include the following columns (delimiter will be auto-detected):</p>
-        <ul style={{ marginTop: "12px", paddingLeft: "20px", color: "#6b7280" }}>
-          <li>
-            <strong>UPN</strong> or <strong>Username</strong> (required)
-          </li>
-          <li>
-            <strong>FullName</strong> (optional)
-          </li>
-          <li>
-            <strong>EmailAddress</strong> or <strong>Email</strong> (optional)
-          </li>
-          <li>
-            <strong>CardID</strong> (optional)
-          </li>
-          <li>
-            <strong>ShortID</strong> or <strong>PIN</strong> (optional - numeric code, detailtype=5)
-          </li>
-          <li>
-            <strong>OTP</strong> (optional - alphanumeric code, detailtype=10)
-          </li>
-          <li>
-            <strong>PID</strong> or <strong>ProviderID</strong> (optional - authentication provider ID, or use dropdown above)
-          </li>
-        </ul>
-      </div>
-    </section>
+      <Card>
+        <CardHeader>
+          <CardTitle>CSV Format</CardTitle>
+          <CardDescription>Your CSV file should include the following columns</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <p className="mb-3 text-sm text-muted-foreground">Delimiter will be auto-detected. Supported columns:</p>
+          <ul className="space-y-2 text-sm text-muted-foreground">
+            <li>
+              <strong>UPN</strong> or <strong>Username</strong> (required)
+            </li>
+            <li>
+              <strong>FullName</strong> (optional)
+            </li>
+            <li>
+              <strong>EmailAddress</strong> or <strong>Email</strong> (optional)
+            </li>
+            <li>
+              <strong>CardID</strong> (optional)
+            </li>
+            <li>
+              <strong>ShortID</strong> or <strong>PIN</strong> (optional - numeric code, detailtype=5)
+            </li>
+            <li>
+              <strong>OTP</strong> (optional - alphanumeric code, detailtype=10)
+            </li>
+            <li>
+              <strong>PID</strong> or <strong>ProviderID</strong> (optional - authentication provider ID, or use dropdown above)
+            </li>
+          </ul>
+        </CardContent>
+      </Card>
+    </div>
   );
 }
 

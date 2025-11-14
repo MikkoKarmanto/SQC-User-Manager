@@ -58,8 +58,7 @@ function EditUserModal({ user, onClose, onSuccess }: EditUserModalProps) {
     try {
       await updateUserCard(user.userName, user.providerId || null, cardId);
       setSuccessMessage("Card updated successfully");
-      setNewCard(""); // Clear input
-      // Refresh data but keep modal open
+      setNewCard("");
       onSuccess();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to update card");
@@ -76,7 +75,6 @@ function EditUserModal({ user, onClose, onSuccess }: EditUserModalProps) {
     try {
       await generateUserPin(user.userName, user.providerId || null);
       setSuccessMessage("PIN generated successfully");
-      // Refresh data but keep modal open
       onSuccess();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to generate PIN");
@@ -93,7 +91,6 @@ function EditUserModal({ user, onClose, onSuccess }: EditUserModalProps) {
     try {
       await updateUserPin(user.userName, user.providerId || null, null);
       setSuccessMessage("PIN deleted successfully");
-      // Refresh data but keep modal open
       onSuccess();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to delete PIN");
@@ -111,7 +108,6 @@ function EditUserModal({ user, onClose, onSuccess }: EditUserModalProps) {
       const result = await generateUserOtp(user.userName, user.providerId || null);
       setGeneratedOtp(result.otp);
       setSuccessMessage(`OTP generated successfully: ${result.otp}`);
-      // Refresh data but keep modal open
       onSuccess();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to generate OTP");
@@ -129,7 +125,6 @@ function EditUserModal({ user, onClose, onSuccess }: EditUserModalProps) {
       await updateUserShortId(user.userName, user.providerId || null, null);
       setGeneratedOtp(null);
       setSuccessMessage("OTP deleted successfully");
-      // Refresh data but keep modal open
       onSuccess();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to delete OTP");
