@@ -143,47 +143,38 @@ function UsersPage() {
   // Filter and search users while preserving selection
   const filteredUsers = useMemo(() => {
     if (!activeProviderId) return [];
-    
+
     const activeData = providerData.get(activeProviderId);
     if (!activeData) return [];
-    
+
     let result = activeData.users;
-    
+
     // Apply search
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
-      result = result.filter(user => 
-        user.userName?.toLowerCase().includes(query) ||
-        user.fullName?.toLowerCase().includes(query) ||
-        user.email?.toLowerCase().includes(query)
+      result = result.filter(
+        (user) =>
+          user.userName?.toLowerCase().includes(query) || user.fullName?.toLowerCase().includes(query) || user.email?.toLowerCase().includes(query)
       );
     }
-    
+
     // Apply filters
     if (filters.hasEmail !== null && filters.hasEmail !== undefined) {
-      result = result.filter(user => 
-        filters.hasEmail ? !!user.email : !user.email
-      );
+      result = result.filter((user) => (filters.hasEmail ? !!user.email : !user.email));
     }
-    
+
     if (filters.hasCard !== null && filters.hasCard !== undefined) {
-      result = result.filter(user => 
-        filters.hasCard ? (user.cards && user.cards.length > 0) : (!user.cards || user.cards.length === 0)
-      );
+      result = result.filter((user) => (filters.hasCard ? user.cards && user.cards.length > 0 : !user.cards || user.cards.length === 0));
     }
-    
+
     if (filters.hasPin !== null && filters.hasPin !== undefined) {
-      result = result.filter(user => 
-        filters.hasPin ? !!user.shortId : !user.shortId
-      );
+      result = result.filter((user) => (filters.hasPin ? !!user.shortId : !user.shortId));
     }
-    
+
     if (filters.hasOtp !== null && filters.hasOtp !== undefined) {
-      result = result.filter(user => 
-        filters.hasOtp ? !!user.otp : !user.otp
-      );
+      result = result.filter((user) => (filters.hasOtp ? !!user.otp : !user.otp));
     }
-    
+
     return result;
   }, [activeProviderId, providerData, searchQuery, filters]);
 
@@ -191,24 +182,24 @@ function UsersPage() {
     if (!activeProviderId) return [];
     const activeData = providerData.get(activeProviderId);
     if (!activeData) return [];
-    
-    return activeData.users.filter(user => selectedUserIds.has(user.id));
+
+    return activeData.users.filter((user) => selectedUserIds.has(user.id));
   }, [activeProviderId, providerData, selectedUserIds]);
 
   const handleBulkGeneratePins = async () => {
     if (selectedUsers.length === 0) return;
-    
+
     setIsBulkProcessing(true);
     setBulkMessage(null);
-    
+
     try {
-      const usersToUpdate = selectedUsers.map(user => ({
+      const usersToUpdate = selectedUsers.map((user) => ({
         userName: user.userName,
         providerId: user.providerId || null,
       }));
-      
+
       const result = await generateBulkPins(usersToUpdate);
-      
+
       if (result.failed > 0) {
         setBulkMessage({
           type: "error",
@@ -220,7 +211,7 @@ function UsersPage() {
           text: `Successfully generated PINs for ${result.success} user${result.success !== 1 ? "s" : ""}`,
         });
       }
-      
+
       // Refresh users after bulk operation
       if (activeProviderId) {
         await fetchUsersForProvider(activeProviderId);
@@ -237,18 +228,18 @@ function UsersPage() {
 
   const handleBulkGenerateOtps = async () => {
     if (selectedUsers.length === 0) return;
-    
+
     setIsBulkProcessing(true);
     setBulkMessage(null);
-    
+
     try {
-      const usersToUpdate = selectedUsers.map(user => ({
+      const usersToUpdate = selectedUsers.map((user) => ({
         userName: user.userName,
         providerId: user.providerId || null,
       }));
-      
+
       const result = await generateBulkOtps(usersToUpdate);
-      
+
       if (result.failed > 0) {
         setBulkMessage({
           type: "error",
@@ -260,7 +251,7 @@ function UsersPage() {
           text: `Successfully generated OTPs for ${result.success} user${result.success !== 1 ? "s" : ""}`,
         });
       }
-      
+
       // Refresh users after bulk operation
       if (activeProviderId) {
         await fetchUsersForProvider(activeProviderId);
@@ -299,11 +290,6 @@ function UsersPage() {
 
   return (
     <div className="container mx-auto max-w-7xl p-6">
-      <div className="mb-6">
-        <h2 className="text-3xl font-bold tracking-tight">Users</h2>
-        <p className="mt-2 text-muted-foreground">Manage SafeQ Cloud users from your tenant. View user details, groups, and properties.</p>
-      </div>
-
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
@@ -313,11 +299,11 @@ function UsersPage() {
             </div>
             <div className="flex items-center gap-2">
               <Button variant="outline" size="sm" onClick={handleRefresh} disabled={activeData?.isLoading || isLoadingProviders}>
-                <RefreshCw className={`h-4 w-4 ${activeData?.isLoading ? 'animate-spin' : ''}`} />
+                <RefreshCw className={`h-4 w-4 ${activeData?.isLoading ? "animate-spin" : ""}`} />
                 Refresh Current
               </Button>
               <Button variant="outline" size="sm" onClick={handleRefreshAll} disabled={isLoadingProviders}>
-                <RefreshCw className={`h-4 w-4 ${isLoadingProviders ? 'animate-spin' : ''}`} />
+                <RefreshCw className={`h-4 w-4 ${isLoadingProviders ? "animate-spin" : ""}`} />
                 Refresh All
               </Button>
             </div>
