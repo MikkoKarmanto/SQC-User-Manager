@@ -52,7 +52,10 @@ impl UrlUtils {
 
     /// Build a base URL for API calls by ensuring the URL has a port
     /// If no port is specified, uses the default API port
-    pub fn build_base_url(normalized_url: &str, default_port: u16) -> Result<String, url::ParseError> {
+    pub fn build_base_url(
+        normalized_url: &str,
+        default_port: u16,
+    ) -> Result<String, url::ParseError> {
         let trimmed = normalized_url.trim();
         if trimmed.is_empty() {
             return Err(url::ParseError::EmptyHost);
@@ -61,9 +64,7 @@ impl UrlUtils {
         let parsed = Url::parse(trimmed)?;
 
         let scheme = parsed.scheme();
-        let host = parsed
-            .host_str()
-            .ok_or(url::ParseError::EmptyHost)?;
+        let host = parsed.host_str().ok_or(url::ParseError::EmptyHost)?;
         let port = parsed.port().unwrap_or(default_port);
 
         let mut result = format!("{}://{}:{}", scheme, host, port);

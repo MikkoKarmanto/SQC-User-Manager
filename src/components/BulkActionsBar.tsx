@@ -4,6 +4,8 @@ interface BulkActionsBarProps {
   selectedCount: number;
   onGeneratePins: () => void;
   onGenerateOtps: () => void;
+  onEmailPins: () => void;
+  onEmailOtps: () => void;
   onClearSelection: () => void;
   isProcessing?: boolean;
 }
@@ -12,6 +14,8 @@ function BulkActionsBar({
   selectedCount,
   onGeneratePins,
   onGenerateOtps,
+  onEmailPins,
+  onEmailOtps,
   onClearSelection,
   isProcessing = false,
 }: BulkActionsBarProps) {
@@ -22,9 +26,11 @@ function BulkActionsBar({
   return (
     <div className="bulk-actions-bar">
       <div className="bulk-info">
-        <span className="bulk-count">{selectedCount} user{selectedCount !== 1 ? "s" : ""} selected</span>
+        <span className="bulk-count">
+          {selectedCount} user{selectedCount !== 1 ? "s" : ""} selected
+        </span>
       </div>
-      
+
       <div className="bulk-buttons">
         <button
           type="button"
@@ -35,7 +41,17 @@ function BulkActionsBar({
         >
           {isProcessing ? "Processing..." : "Generate PINs"}
         </button>
-        
+
+        <button
+          type="button"
+          className="bulk-btn bulk-btn-primary"
+          onClick={onEmailPins}
+          disabled={isProcessing}
+          title="Send PIN emails for all selected users"
+        >
+          Email PINs
+        </button>
+
         <button
           type="button"
           className="bulk-btn bulk-btn-primary"
@@ -45,14 +61,18 @@ function BulkActionsBar({
         >
           {isProcessing ? "Processing..." : "Generate OTPs"}
         </button>
-        
+
         <button
           type="button"
-          className="bulk-btn bulk-btn-secondary"
-          onClick={onClearSelection}
+          className="bulk-btn bulk-btn-primary"
+          onClick={onEmailOtps}
           disabled={isProcessing}
-          title="Clear selection"
+          title="Send OTP emails for all selected users"
         >
+          Email OTPs
+        </button>
+
+        <button type="button" className="bulk-btn bulk-btn-secondary" onClick={onClearSelection} disabled={isProcessing} title="Clear selection">
           Clear Selection
         </button>
       </div>

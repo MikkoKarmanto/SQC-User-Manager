@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { SafeQUser } from "../types/safeq";
 import { updateUserCard, updateUserPin, updateUserShortId, generateUserPin, generateUserOtp } from "../services/safeqClient";
+import { sendCredentialEmails, type CredentialType } from "../services/emailDelivery";
 import "./EditUserModal.css";
 
 interface EditUserModalProps {
@@ -16,6 +17,7 @@ function EditUserModal({ user, onClose, onSuccess }: EditUserModalProps) {
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [generatedOtp, setGeneratedOtp] = useState<string | null>(null);
+  const [generatedPin, setGeneratedPin] = useState<string | null>(null);
 
   if (!user) {
     return null;
@@ -23,7 +25,7 @@ function EditUserModal({ user, onClose, onSuccess }: EditUserModalProps) {
 
   // Initialize state when user changes
   const currentCards = user.cards || [];
-  const currentShortId = user.shortId || "";
+  const currentShortId = (generatedPin ?? user.shortId) || "";
 
   const handleAddCard = () => {
     if (newCard.trim() && !cards.includes(newCard.trim())) {
@@ -73,8 +75,9 @@ function EditUserModal({ user, onClose, onSuccess }: EditUserModalProps) {
     setSuccessMessage(null);
 
     try {
-      await generateUserPin(user.userName, user.providerId || null);
-      setSuccessMessage("PIN generated successfully");
+      const result = await generateUserPin(user.userName, user.providerId || null);
+      setGeneratedPin(result.pin);
+      setSuccessMessage(`PIN generated successfully: ${result.pin}`);
       onSuccess();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to generate PIN");
@@ -90,6 +93,7 @@ function EditUserModal({ user, onClose, onSuccess }: EditUserModalProps) {
 
     try {
       await updateUserPin(user.userName, user.providerId || null, null);
+      setGeneratedPin(null);
       setSuccessMessage("PIN deleted successfully");
       onSuccess();
     } catch (err) {
@@ -128,6 +132,32 @@ function EditUserModal({ user, onClose, onSuccess }: EditUserModalProps) {
       onSuccess();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to delete OTP");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleSendCredentialEmail = async (type: CredentialType) => {
+    setIsSubmitting(true);
+    setError(null);
+    setSuccessMessage(null);
+
+    try {
+      const overrides = type === "pin" ? { pinOverride: generatedPin ?? user.shortId ?? null } : { otpOverride: generatedOtp ?? user.otp ?? null };
+
+      const result = await sendCredentialEmails([{ user, ...overrides }], type);
+
+      if (result.success > 0) {
+        const label = type === "pin" ? "PIN" : "OTP";
+        const action = result.method === "graph" ? "Sent" : "Opened draft for";
+        setSuccessMessage(`${action} ${label} email.`);
+      }
+
+      if (result.failed > 0 && result.errors.length > 0) {
+        setError(result.errors.join("\n"));
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to deliver email");
     } finally {
       setIsSubmitting(false);
     }
@@ -238,6 +268,9 @@ function EditUserModal({ user, onClose, onSuccess }: EditUserModalProps) {
                     Delete
                   </button>
                 )}
+                <button type="button" onClick={() => handleSendCredentialEmail("pin")} disabled={isSubmitting || !user.email}>
+                  Email PIN
+                </button>
               </div>
             </div>
             <p className="helper-text">PIN is a numeric code</p>
@@ -258,6 +291,9 @@ function EditUserModal({ user, onClose, onSuccess }: EditUserModalProps) {
                   <button type="button" className="btn-danger" onClick={handleDeleteOtp} disabled={isSubmitting}>
                     Delete
                   </button>
+                  <button type="button" onClick={() => handleSendCredentialEmail("otp")} disabled={isSubmitting || !user.email}>
+                    Email OTP
+                  </button>
                 </div>
               </div>
             ) : (
@@ -269,6 +305,9 @@ function EditUserModal({ user, onClose, onSuccess }: EditUserModalProps) {
                   </button>
                   <button type="button" className="btn-danger" onClick={handleDeleteOtp} disabled={isSubmitting}>
                     Delete
+                  </button>
+                  <button type="button" onClick={() => handleSendCredentialEmail("otp")} disabled={isSubmitting || !user.email}>
+                    Email OTP
                   </button>
                 </div>
               </div>

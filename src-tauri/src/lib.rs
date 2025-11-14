@@ -1,3 +1,4 @@
+mod email;
 mod generator;
 mod safeq_api;
 mod settings;
@@ -267,6 +268,26 @@ async fn create_users(
     }))
 }
 
+#[tauri::command]
+async fn send_graph_emails(
+    app: tauri::AppHandle,
+    messages: Vec<email::PreparedEmailPayload>,
+) -> Result<serde_json::Value, String> {
+    let settings = settings::load_safeq_settings(&app)
+        .map_err(|error| error.to_string())?
+        .ok_or("Settings not configured")?;
+
+    let summary = email::send_graph_emails(&settings.email_settings, &messages)
+        .await
+        .map_err(|error| error.to_string())?;
+
+    Ok(serde_json::json!({
+        "success": summary.success,
+        "failed": summary.failed,
+        "errors": summary.errors,
+    }))
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -285,7 +306,8 @@ pub fn run() {
             generate_user_otp,
             generate_bulk_pins,
             generate_bulk_otps,
-            create_users
+            create_users,
+            send_graph_emails
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

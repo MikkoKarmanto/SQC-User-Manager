@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState, useMemo } from "react";
 import { listAuthProviders, listUsersForProvider, generateBulkPins, generateBulkOtps } from "../services/safeqClient";
+import { sendCredentialEmails, type CredentialType } from "../services/emailDelivery";
 import { extractUsers, type SafeQAuthProvider, type SafeQUser } from "../types/safeq";
 import UserTable from "../components/UserTable";
 import EditUserModal from "../components/EditUserModal";
@@ -266,6 +267,46 @@ function UsersPage() {
     }
   };
 
+  const handleBulkEmail = async (type: CredentialType) => {
+    if (selectedUsers.length === 0) return;
+
+    setIsBulkProcessing(true);
+    setBulkMessage(null);
+
+    try {
+      const requests = selectedUsers.map((user) => ({
+        user,
+        pinOverride: type === "pin" ? user.shortId ?? null : undefined,
+        otpOverride: type === "otp" ? user.otp ?? null : undefined,
+      }));
+
+      const result = await sendCredentialEmails(requests, type);
+      const label = type === "pin" ? "PIN" : "OTP";
+      const verb = result.method === "graph" ? "Sent" : "Opened drafts for";
+      const successText = `${verb} ${label} email${result.success === 1 ? "" : "s"} for ${result.success} user${result.success === 1 ? "" : "s"}.`;
+
+      if (result.failed > 0) {
+        const errorSummary = result.errors.slice(0, 3).join("; ");
+        setBulkMessage({
+          type: "error",
+          text: `${successText} ${result.failed} user${result.failed === 1 ? "" : "s"} failed. ${errorSummary}`,
+        });
+      } else {
+        setBulkMessage({
+          type: "success",
+          text: successText,
+        });
+      }
+    } catch (err) {
+      setBulkMessage({
+        type: "error",
+        text: toErrorMessage(err),
+      });
+    } finally {
+      setIsBulkProcessing(false);
+    }
+  };
+
   const handleRefresh = async () => {
     if (activeProviderId) {
       const updatedUsers = await fetchUsersForProvider(activeProviderId);
@@ -402,6 +443,8 @@ function UsersPage() {
                         selectedCount={selectedUserIds.size}
                         onGeneratePins={handleBulkGeneratePins}
                         onGenerateOtps={handleBulkGenerateOtps}
+                        onEmailPins={() => handleBulkEmail("pin")}
+                        onEmailOtps={() => handleBulkEmail("otp")}
                         onClearSelection={() => setSelectedUserIds(new Set())}
                         isProcessing={isBulkProcessing}
                       />

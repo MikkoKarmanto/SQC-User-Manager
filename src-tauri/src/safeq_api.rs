@@ -148,7 +148,9 @@ impl SafeQClient {
 
         // Update the user with the generated PIN (detailtype=5)
         self.update_user_detail(username, provider_id, UserDetailType::Pin, Some(&pin))
-            .await
+            .await?;
+
+        Ok(serde_json::json!({ "pin": pin }))
     }
 
     /// Generate a new OTP (One Time Password) for a user
@@ -404,8 +406,6 @@ impl std::error::Error for SafeQApiError {
         }
     }
 }
-
-
 
 fn truncate_body(body: &str) -> String {
     let trimmed = body.trim();

@@ -27,7 +27,7 @@ export async function updateUserPin(username: string, providerId: number | null,
   return invoke("update_user_pin", { username, providerId, pin });
 }
 
-export async function generateUserPin(username: string, providerId: number | null): Promise<unknown> {
+export async function generateUserPin(username: string, providerId: number | null): Promise<{ pin: string }> {
   return invoke("generate_user_pin", { username, providerId });
 }
 
@@ -49,4 +49,15 @@ export async function generateBulkPins(users: unknown[]): Promise<{ success: num
 
 export async function generateBulkOtps(users: unknown[]): Promise<{ success: number; failed: number; errors: string[] }> {
   return invoke("generate_bulk_otps", { users });
+}
+
+export type PreparedEmailMessage = {
+  to: string;
+  subject: string;
+  body: string;
+  contentType?: "text" | "html";
+};
+
+export async function sendGraphEmails(messages: PreparedEmailMessage[]): Promise<{ success: number; failed: number; errors: string[] }> {
+  return invoke("send_graph_emails", { messages });
 }
