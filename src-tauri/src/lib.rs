@@ -151,17 +151,28 @@ async fn generate_bulk_pins(
 
     let mut success_count = 0;
     let mut failed_count = 0;
-    let mut errors: Vec<String> = Vec::new();
+    let mut results: Vec<serde_json::Value> = Vec::new();
 
     for user in users {
         let username = user["userName"].as_str().unwrap_or("");
         let provider_id = user["providerId"].as_i64();
 
         match client.generate_pin(username, provider_id, &settings).await {
-            Ok(_) => success_count += 1,
+            Ok(result) => {
+                success_count += 1;
+                results.push(serde_json::json!({
+                    "user": user,
+                    "success": true,
+                    "value": result["pin"]
+                }));
+            }
             Err(e) => {
                 failed_count += 1;
-                errors.push(format!("{}: {}", username, e));
+                results.push(serde_json::json!({
+                    "user": user,
+                    "success": false,
+                    "error": e.to_string()
+                }));
             }
         }
     }
@@ -169,7 +180,7 @@ async fn generate_bulk_pins(
     Ok(serde_json::json!({
         "success": success_count,
         "failed": failed_count,
-        "errors": errors
+        "results": results
     }))
 }
 
@@ -187,17 +198,28 @@ async fn generate_bulk_otps(
 
     let mut success_count = 0;
     let mut failed_count = 0;
-    let mut errors: Vec<String> = Vec::new();
+    let mut results: Vec<serde_json::Value> = Vec::new();
 
     for user in users {
         let username = user["userName"].as_str().unwrap_or("");
         let provider_id = user["providerId"].as_i64();
 
         match client.generate_otp(username, provider_id, &settings).await {
-            Ok(_) => success_count += 1,
+            Ok(result) => {
+                success_count += 1;
+                results.push(serde_json::json!({
+                    "user": user,
+                    "success": true,
+                    "value": result["otp"]
+                }));
+            }
             Err(e) => {
                 failed_count += 1;
-                errors.push(format!("{}: {}", username, e));
+                results.push(serde_json::json!({
+                    "user": user,
+                    "success": false,
+                    "error": e.to_string()
+                }));
             }
         }
     }
@@ -205,7 +227,7 @@ async fn generate_bulk_otps(
     Ok(serde_json::json!({
         "success": success_count,
         "failed": failed_count,
-        "errors": errors
+        "results": results
     }))
 }
 

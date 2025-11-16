@@ -1,8 +1,12 @@
 import { useState } from "react";
 import type { SafeQUser } from "../types/safeq";
 import { updateUserCard, updateUserPin, updateUserShortId, generateUserPin, generateUserOtp } from "../services/safeqClient";
-import { sendCredentialEmails, type CredentialType } from "../services/emailDelivery";
-import "./EditUserModal.css";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Loader2, Trash2, Plus } from "lucide-react";
 
 interface EditUserModalProps {
   user: SafeQUser | null;
@@ -11,7 +15,6 @@ interface EditUserModalProps {
 }
 
 function EditUserModal({ user, onClose, onSuccess }: EditUserModalProps) {
-  const [cards, setCards] = useState<string[]>([]);
   const [newCard, setNewCard] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -26,13 +29,6 @@ function EditUserModal({ user, onClose, onSuccess }: EditUserModalProps) {
   // Initialize state when user changes
   const currentCards = user.cards || [];
   const currentShortId = (generatedPin ?? user.shortId) || "";
-
-  const handleAddCard = () => {
-    if (newCard.trim() && !cards.includes(newCard.trim())) {
-      setCards([...cards, newCard.trim()]);
-      setNewCard("");
-    }
-  };
 
   const handleDeleteCard = async (cardId: string) => {
     setIsSubmitting(true);
@@ -137,192 +133,162 @@ function EditUserModal({ user, onClose, onSuccess }: EditUserModalProps) {
     }
   };
 
-  const handleSendCredentialEmail = async (type: CredentialType) => {
-    setIsSubmitting(true);
-    setError(null);
-    setSuccessMessage(null);
-
-    try {
-      const overrides = type === "pin" ? { pinOverride: generatedPin ?? user.shortId ?? null } : { otpOverride: generatedOtp ?? user.otp ?? null };
-
-      const result = await sendCredentialEmails([{ user, ...overrides }], type);
-
-      if (result.success > 0) {
-        const label = type === "pin" ? "PIN" : "OTP";
-        const action = result.method === "graph" ? "Sent" : "Opened draft for";
-        setSuccessMessage(`${action} ${label} email.`);
-      }
-
-      if (result.failed > 0 && result.errors.length > 0) {
-        setError(result.errors.join("\n"));
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to deliver email");
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content edit-modal" onClick={(e) => e.stopPropagation()}>
-        {isSubmitting && (
-          <div className="loading-overlay">
-            <div className="spinner"></div>
-            <span>Processing...</span>
-          </div>
-        )}
+    <Dialog open={!!user} onOpenChange={onClose}>
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-hidden flex flex-col">
+        <DialogHeader>
+          <DialogTitle>User Details</DialogTitle>
+          <DialogDescription>{user.userName}</DialogDescription>
+        </DialogHeader>
 
-        <div className="modal-header">
-          <h3>User Details: {user.userName}</h3>
-          <button type="button" className="modal-close" onClick={onClose} aria-label="Close">
-            ×
-          </button>
-        </div>
-
-        <div className="modal-body">
-          {error && <div className="status error">{error}</div>}
-          {successMessage && <div className="status success">{successMessage}</div>}
-
-          {/* Read-only User Information */}
-          <div className="edit-section">
-            <h4>User Information</h4>
-            <div className="info-grid">
-              <div className="info-item">
-                <span className="info-label">Username:</span>
-                <span className="info-value">{user.userName || "—"}</span>
-              </div>
-              <div className="info-item">
-                <span className="info-label">Full Name:</span>
-                <span className="info-value">{user.fullName || "—"}</span>
-              </div>
-              <div className="info-item">
-                <span className="info-label">Email:</span>
-                <span className="info-value">{user.email || "—"}</span>
-              </div>
-              <div className="info-item">
-                <span className="info-label">Department:</span>
-                <span className="info-value">{user.department || "—"}</span>
-              </div>
-              <div className="info-item">
-                <span className="info-label">Status:</span>
-                <span className="info-value">
-                  <span className={`status-badge ${user.isExpired === false ? "enabled" : "disabled"}`}>
-                    {user.isExpired === false ? "Active" : user.isExpired === true ? "Expired" : "Active"}
-                  </span>
-                </span>
-              </div>
-              <div className="info-item">
-                <span className="info-label">Groups:</span>
-                <span className="info-value">
-                  {user.groupIds && user.groupIds.length > 0 ? `${user.groupIds.length} group${user.groupIds.length !== 1 ? "s" : ""}` : "—"}
-                </span>
-              </div>
+        <div className="flex-1 overflow-auto space-y-6">
+          {error && (
+            <div className="rounded-md border border-red-200 bg-red-50 p-4 text-red-900 dark:border-red-900 dark:bg-red-950 dark:text-red-100">
+              {error}
             </div>
-          </div>
+          )}
+          {successMessage && (
+            <div className="rounded-md border border-green-200 bg-green-50 p-4 text-green-900 dark:border-green-900 dark:bg-green-950 dark:text-green-100">
+              {successMessage}
+            </div>
+          )}
 
-          {/* Cards Section */}
-          <div className="edit-section">
-            <h4>Card Management</h4>
-            <div className="cards-list">
-              {currentCards.length > 0 ? (
-                currentCards.map((card) => (
-                  <div key={card} className="card-item">
-                    <span className="card-id">{card}</span>
-                    <button type="button" className="btn-small btn-danger" onClick={() => handleDeleteCard(card)} disabled={isSubmitting}>
-                      Delete
-                    </button>
-                  </div>
-                ))
-              ) : (
-                <p className="helper-text">No cards assigned</p>
+          {/* User Information */}
+          <Card>
+            <CardHeader>
+              <CardTitle>User Information</CardTitle>
+            </CardHeader>
+            <CardContent className="grid grid-cols-2 gap-4">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Username</p>
+                <p className="text-sm font-mono">{user.userName || "—"}</p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Full Name</p>
+                <p className="text-sm">{user.fullName || "—"}</p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Email</p>
+                <p className="text-sm font-mono">{user.email || "—"}</p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Department</p>
+                <p className="text-sm">{user.department || "—"}</p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Status</p>
+                <Badge variant={user.isExpired === false ? "default" : "secondary"}>
+                  {user.isExpired === false ? "Active" : user.isExpired === true ? "Expired" : "Active"}
+                </Badge>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Groups</p>
+                <p className="text-sm">
+                  {user.groupIds && user.groupIds.length > 0
+                    ? `${user.groupIds.length} group${user.groupIds.length !== 1 ? "s" : ""}`
+                    : "—"}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Card Management */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Card Management</CardTitle>
+              <CardDescription>Manage user's access cards</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {currentCards.length > 0 && (
+                <div className="space-y-2">
+                  {currentCards.map((card) => (
+                    <div key={card} className="flex items-center justify-between rounded-md border bg-muted/50 p-3">
+                      <span className="font-mono text-sm">{card}</span>
+                      <Button variant="destructive" size="sm" onClick={() => handleDeleteCard(card)} disabled={isSubmitting}>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
               )}
-            </div>
-
-            <div className="add-card-form">
-              <input
-                type="text"
-                placeholder="Enter new card ID"
-                value={newCard}
-                onChange={(e) => setNewCard(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleAddCard()}
-                disabled={isSubmitting}
-              />
-              <button type="button" onClick={() => handleSaveCard(newCard)} disabled={isSubmitting || !newCard.trim()}>
-                Add Card
-              </button>
-            </div>
-          </div>
-
-          {/* PIN Section */}
-          <div className="edit-section">
-            <h4>PIN</h4>
-            <div className="field-row">
-              <span className="field-value">{currentShortId || "Not set"}</span>
-              <div className="field-actions">
-                <button type="button" onClick={handleGeneratePin} disabled={isSubmitting}>
-                  Generate New
-                </button>
-                {currentShortId && (
-                  <button type="button" className="btn-danger" onClick={handleDeletePin} disabled={isSubmitting}>
-                    Delete
-                  </button>
-                )}
-                <button type="button" onClick={() => handleSendCredentialEmail("pin")} disabled={isSubmitting || !user.email}>
-                  Email PIN
-                </button>
+              {currentCards.length === 0 && <p className="text-sm text-muted-foreground">No cards assigned</p>}
+              <div className="flex gap-2">
+                <Input
+                  type="text"
+                  placeholder="Enter new card ID"
+                  value={newCard}
+                  onChange={(e) => setNewCard(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && newCard.trim() && handleSaveCard(newCard)}
+                  disabled={isSubmitting}
+                  className="font-mono"
+                />
+                <Button onClick={() => handleSaveCard(newCard)} disabled={isSubmitting || !newCard.trim()}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add
+                </Button>
               </div>
-            </div>
-            <p className="helper-text">PIN is a numeric code</p>
-          </div>
+            </CardContent>
+          </Card>
 
-          {/* OTP Section */}
-          <div className="edit-section">
-            <h4>OTP</h4>
-            {generatedOtp ? (
-              <div className="field-row">
-                <span className="field-value" style={{ fontFamily: "monospace", fontSize: "16px", fontWeight: 600 }}>
-                  {generatedOtp}
-                </span>
-                <div className="field-actions">
-                  <button type="button" onClick={handleGenerateOtp} disabled={isSubmitting}>
-                    Generate New
-                  </button>
-                  <button type="button" className="btn-danger" onClick={handleDeleteOtp} disabled={isSubmitting}>
-                    Delete
-                  </button>
-                  <button type="button" onClick={() => handleSendCredentialEmail("otp")} disabled={isSubmitting || !user.email}>
-                    Email OTP
-                  </button>
+          {/* PIN Management */}
+          <Card>
+            <CardHeader>
+              <CardTitle>PIN</CardTitle>
+              <CardDescription>Numeric authentication code</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between rounded-md border bg-muted/50 p-3">
+                <span className="font-mono text-sm font-semibold">{currentShortId || "Not set"}</span>
+                <div className="flex gap-2">
+                  <Button onClick={handleGeneratePin} disabled={isSubmitting} size="sm">
+                    Generate
+                  </Button>
+                  {currentShortId && (
+                    <Button variant="destructive" onClick={handleDeletePin} disabled={isSubmitting} size="sm">
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  )}
                 </div>
               </div>
+            </CardContent>
+          </Card>
+
+          {/* OTP Management */}
+          <Card>
+            <CardHeader>
+              <CardTitle>OTP</CardTitle>
+              <CardDescription>Alphanumeric one-time password</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between rounded-md border bg-muted/50 p-3">
+                <span className="font-mono text-sm font-semibold">{generatedOtp || "Not generated"}</span>
+                <div className="flex gap-2">
+                  <Button onClick={handleGenerateOtp} disabled={isSubmitting} size="sm">
+                    Generate
+                  </Button>
+                  <Button variant="destructive" onClick={handleDeleteOtp} disabled={isSubmitting} size="sm">
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        <DialogFooter>
+          <Button variant="secondary" onClick={onClose} disabled={isSubmitting}>
+            {isSubmitting ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Processing...
+              </>
             ) : (
-              <div className="field-row">
-                <span className="field-value helper-text">Click Generate to create an OTP</span>
-                <div className="field-actions">
-                  <button type="button" onClick={handleGenerateOtp} disabled={isSubmitting}>
-                    Generate OTP
-                  </button>
-                  <button type="button" className="btn-danger" onClick={handleDeleteOtp} disabled={isSubmitting}>
-                    Delete
-                  </button>
-                  <button type="button" onClick={() => handleSendCredentialEmail("otp")} disabled={isSubmitting || !user.email}>
-                    Email OTP
-                  </button>
-                </div>
-              </div>
+              "Close"
             )}
-            <p className="helper-text">OTP is an alphanumeric code</p>
-          </div>
-        </div>
-
-        <div className="modal-footer">
-          <button type="button" onClick={onClose} disabled={isSubmitting}>
-            Close
-          </button>
-        </div>
-      </div>
-    </div>
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 

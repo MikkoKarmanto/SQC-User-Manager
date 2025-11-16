@@ -43,11 +43,22 @@ export async function createUsers(
   return invoke("create_users", { users, autoGeneratePin, autoGenerateOtp });
 }
 
-export async function generateBulkPins(users: unknown[]): Promise<{ success: number; failed: number; errors: string[] }> {
+export interface BulkGenerationResult {
+  success: number;
+  failed: number;
+  results: Array<{
+    user: unknown;
+    success: boolean;
+    value?: string;
+    error?: string;
+  }>;
+}
+
+export async function generateBulkPins(users: unknown[]): Promise<BulkGenerationResult> {
   return invoke("generate_bulk_pins", { users });
 }
 
-export async function generateBulkOtps(users: unknown[]): Promise<{ success: number; failed: number; errors: string[] }> {
+export async function generateBulkOtps(users: unknown[]): Promise<BulkGenerationResult> {
   return invoke("generate_bulk_otps", { users });
 }
 

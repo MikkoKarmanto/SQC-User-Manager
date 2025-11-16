@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useState, useMemo } from "react";
-import { listAuthProviders, listUsersForProvider, generateBulkPins, generateBulkOtps } from "../services/safeqClient";
-import { sendCredentialEmails, type CredentialType } from "../services/emailDelivery";
+import { listAuthProviders, listUsersForProvider, generateBulkPins, generateBulkOtps, type BulkGenerationResult } from "../services/safeqClient";
+import { type CredentialType } from "../services/emailDelivery";
 import { extractUsers, type SafeQAuthProvider, type SafeQUser } from "../types/safeq";
 import UserTable from "../components/UserTable";
 import EditUserModal from "../components/EditUserModal";
+import ResultsDialog from "../components/ResultsDialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -34,6 +35,15 @@ function UsersPage() {
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
   const [isBulkProcessing, setIsBulkProcessing] = useState(false);
   const [bulkMessage, setBulkMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [resultsDialog, setResultsDialog] = useState<{
+    open: boolean;
+    type: CredentialType;
+    results: Array<{ user: SafeQUser; success: boolean; value?: string; error?: string }>;
+  }>({
+    open: false,
+    type: "pin",
+    results: [],
+  });
 
   const fetchProviders = useCallback(async () => {
     setIsLoadingProviders(true);
@@ -199,7 +209,22 @@ function UsersPage() {
         providerId: user.providerId || null,
       }));
 
-      const result = await generateBulkPins(usersToUpdate);
+      const result: BulkGenerationResult = await generateBulkPins(usersToUpdate);
+
+      // Map backend results to dialog format
+      const dialogResults = result.results.map((item) => ({
+        user: item.user as SafeQUser,
+        success: item.success,
+        value: item.value,
+        error: item.error,
+      }));
+
+      // Show results dialog
+      setResultsDialog({
+        open: true,
+        type: "pin",
+        results: dialogResults,
+      });
 
       if (result.failed > 0) {
         setBulkMessage({
@@ -239,7 +264,22 @@ function UsersPage() {
         providerId: user.providerId || null,
       }));
 
-      const result = await generateBulkOtps(usersToUpdate);
+      const result: BulkGenerationResult = await generateBulkOtps(usersToUpdate);
+
+      // Map backend results to dialog format
+      const dialogResults = result.results.map((item) => ({
+        user: item.user as SafeQUser,
+        success: item.success,
+        value: item.value,
+        error: item.error,
+      }));
+
+      // Show results dialog
+      setResultsDialog({
+        open: true,
+        type: "otp",
+        results: dialogResults,
+      });
 
       if (result.failed > 0) {
         setBulkMessage({
@@ -261,46 +301,6 @@ function UsersPage() {
       setBulkMessage({
         type: "error",
         text: err instanceof Error ? err.message : "Failed to generate OTPs",
-      });
-    } finally {
-      setIsBulkProcessing(false);
-    }
-  };
-
-  const handleBulkEmail = async (type: CredentialType) => {
-    if (selectedUsers.length === 0) return;
-
-    setIsBulkProcessing(true);
-    setBulkMessage(null);
-
-    try {
-      const requests = selectedUsers.map((user) => ({
-        user,
-        pinOverride: type === "pin" ? user.shortId ?? null : undefined,
-        otpOverride: type === "otp" ? user.otp ?? null : undefined,
-      }));
-
-      const result = await sendCredentialEmails(requests, type);
-      const label = type === "pin" ? "PIN" : "OTP";
-      const verb = result.method === "graph" ? "Sent" : "Opened drafts for";
-      const successText = `${verb} ${label} email${result.success === 1 ? "" : "s"} for ${result.success} user${result.success === 1 ? "" : "s"}.`;
-
-      if (result.failed > 0) {
-        const errorSummary = result.errors.slice(0, 3).join("; ");
-        setBulkMessage({
-          type: "error",
-          text: `${successText} ${result.failed} user${result.failed === 1 ? "" : "s"} failed. ${errorSummary}`,
-        });
-      } else {
-        setBulkMessage({
-          type: "success",
-          text: successText,
-        });
-      }
-    } catch (err) {
-      setBulkMessage({
-        type: "error",
-        text: toErrorMessage(err),
       });
     } finally {
       setIsBulkProcessing(false);
@@ -443,8 +443,6 @@ function UsersPage() {
                         selectedCount={selectedUserIds.size}
                         onGeneratePins={handleBulkGeneratePins}
                         onGenerateOtps={handleBulkGenerateOtps}
-                        onEmailPins={() => handleBulkEmail("pin")}
-                        onEmailOtps={() => handleBulkEmail("otp")}
                         onClearSelection={() => setSelectedUserIds(new Set())}
                         isProcessing={isBulkProcessing}
                       />
@@ -458,6 +456,12 @@ function UsersPage() {
       </Card>
 
       <EditUserModal key={selectedUser?.id} user={selectedUser} onClose={() => setSelectedUser(null)} onSuccess={handleRefresh} />
+      <ResultsDialog
+        open={resultsDialog.open}
+        onClose={() => setResultsDialog({ ...resultsDialog, open: false })}
+        type={resultsDialog.type}
+        results={resultsDialog.results}
+      />
     </div>
   );
 }
