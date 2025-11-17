@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Loader2, Trash2, Plus, Mail } from "lucide-react";
 import MessageBox from "./MessageBox";
+import "./EditUserModal.css";
 
 interface EditUserModalProps {
   user: SafeQUser | null;
@@ -206,70 +207,67 @@ function EditUserModal({ user, onClose, onSuccess }: EditUserModalProps) {
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle>User Details</DialogTitle>
-          <DialogDescription>{user.userName}</DialogDescription>
         </DialogHeader>
 
-        <div className="flex-1 overflow-auto space-y-6">
+        <div className="flex-1 overflow-auto space-y-4">
           {error && <MessageBox type="error" message={error} onDismiss={() => setError(null)} />}
           {successMessage && <MessageBox type="success" message={successMessage} onDismiss={() => setSuccessMessage(null)} />}
 
           {/* User Information */}
           <Card>
-            <CardHeader>
-              <CardTitle>User Information</CardTitle>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">User Information</CardTitle>
             </CardHeader>
-            <CardContent className="grid grid-cols-2 gap-4">
+            <CardContent className="grid grid-cols-3 gap-3 text-sm">
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Username</p>
-                <p className="text-sm font-mono">{user.userName || "—"}</p>
+                <p className="text-xs font-medium text-muted-foreground mb-1">Username</p>
+                <p className="font-mono">{user.userName || "—"}</p>
               </div>
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Full Name</p>
-                <p className="text-sm">{user.fullName || "—"}</p>
+                <p className="text-xs font-medium text-muted-foreground mb-1">Full Name</p>
+                <p>{user.fullName || "—"}</p>
               </div>
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Email</p>
-                <p className="text-sm font-mono">{user.email || "—"}</p>
+                <p className="text-xs font-medium text-muted-foreground mb-1">Email</p>
+                <p className="font-mono">{user.email || "—"}</p>
               </div>
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Department</p>
-                <p className="text-sm">{user.department || "—"}</p>
+                <p className="text-xs font-medium text-muted-foreground mb-1">Department</p>
+                <p>{user.department || "—"}</p>
               </div>
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Status</p>
+                <p className="text-xs font-medium text-muted-foreground mb-1">Status</p>
                 <Badge variant={user.isExpired === false ? "default" : "secondary"}>
                   {user.isExpired === false ? "Active" : user.isExpired === true ? "Expired" : "Active"}
                 </Badge>
               </div>
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Groups</p>
-                <p className="text-sm">
-                  {user.groupIds && user.groupIds.length > 0 ? `${user.groupIds.length} group${user.groupIds.length !== 1 ? "s" : ""}` : "—"}
-                </p>
+                <p className="text-xs font-medium text-muted-foreground mb-1">Groups</p>
+                <p>{user.groupIds && user.groupIds.length > 0 ? `${user.groupIds.length} group${user.groupIds.length !== 1 ? "s" : ""}` : "—"}</p>
               </div>
             </CardContent>
           </Card>
 
           {/* Card Management */}
           <Card>
-            <CardHeader>
-              <CardTitle>Card Management</CardTitle>
-              <CardDescription>Manage user's access cards</CardDescription>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">Card Management</CardTitle>
+              <CardDescription className="text-xs">Manage user's access cards</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-3">
               {currentCards.length > 0 && (
                 <div className="space-y-2">
                   {currentCards.map((card) => (
-                    <div key={card} className="flex items-center justify-between rounded-md border bg-muted/50 p-3">
+                    <div key={card} className="flex items-center justify-between rounded-md border bg-muted/50 p-2">
                       <span className="font-mono text-sm">{card}</span>
                       <Button variant="destructive" size="sm" onClick={() => handleDeleteCard(card)} disabled={isSubmitting}>
-                        <Trash2 className="h-4 w-4" />
+                        <Trash2 className="h-3 w-3" />
                       </Button>
                     </div>
                   ))}
                 </div>
               )}
-              {currentCards.length === 0 && <p className="text-sm text-muted-foreground">No cards assigned</p>}
+              {currentCards.length === 0 && <p className="text-xs text-muted-foreground">No cards assigned</p>}
               <div className="flex gap-2">
                 <Input
                   type="text"
@@ -290,13 +288,19 @@ function EditUserModal({ user, onClose, onSuccess }: EditUserModalProps) {
 
           {/* PIN Management */}
           <Card>
-            <CardHeader>
-              <CardTitle>PIN</CardTitle>
-              <CardDescription>Numeric authentication code</CardDescription>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">PIN</CardTitle>
+              <CardDescription className="text-xs">Numeric authentication code</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center justify-between rounded-md border bg-muted/50 p-3">
-                <span className="font-mono text-sm font-semibold">{currentShortId || "Not set"}</span>
+            <CardContent>
+              <div className="flex items-center justify-between rounded-md border bg-muted/50 p-2">
+                <span
+                  className={`font-mono text-sm font-semibold transition-all duration-300 ${
+                    isSubmitting && !sendingEmail ? "animate-pulse opacity-50" : ""
+                  } ${generatedPin ? "animate-fade-in" : ""}`}
+                >
+                  {currentShortId || "Not set"}
+                </span>
                 <div className="flex gap-2">
                   {currentShortId && user.email && (
                     <Button
@@ -325,13 +329,19 @@ function EditUserModal({ user, onClose, onSuccess }: EditUserModalProps) {
 
           {/* OTP Management */}
           <Card>
-            <CardHeader>
-              <CardTitle>OTP</CardTitle>
-              <CardDescription>Alphanumeric one-time password (only visible when freshly generated)</CardDescription>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">OTP</CardTitle>
+              <CardDescription className="text-xs">Alphanumeric one-time password (only visible when freshly generated)</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center justify-between rounded-md border bg-muted/50 p-3">
-                <span className="font-mono text-sm font-semibold">{generatedOtp || "Not generated"}</span>
+            <CardContent>
+              <div className="flex items-center justify-between rounded-md border bg-muted/50 p-2">
+                <span
+                  className={`font-mono text-sm font-semibold transition-all duration-300 ${
+                    isSubmitting && !sendingEmail ? "animate-pulse opacity-50" : ""
+                  } ${generatedOtp ? "animate-fade-in" : ""}`}
+                >
+                  {generatedOtp || "Not generated"}
+                </span>
                 <div className="flex gap-2">
                   {generatedOtp && user.email && (
                     <Button
