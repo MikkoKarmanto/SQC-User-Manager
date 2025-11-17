@@ -211,13 +211,17 @@ function UsersPage() {
 
       const result: BulkGenerationResult = await generateBulkPins(usersToUpdate);
 
-      // Map backend results to dialog format
-      const dialogResults = result.results.map((item) => ({
-        user: item.user as SafeQUser,
-        success: item.success,
-        value: item.value,
-        error: item.error,
-      }));
+      // Map backend results to dialog format with full user data
+      const dialogResults = result.results.map((item) => {
+        // Find the full user object from selectedUsers
+        const fullUser = selectedUsers.find((u) => u.userName === item.user.userName);
+        return {
+          user: fullUser || (item.user as SafeQUser),
+          success: item.success,
+          value: item.value,
+          error: item.error,
+        };
+      });
 
       // Show results dialog
       setResultsDialog({
@@ -266,13 +270,17 @@ function UsersPage() {
 
       const result: BulkGenerationResult = await generateBulkOtps(usersToUpdate);
 
-      // Map backend results to dialog format
-      const dialogResults = result.results.map((item) => ({
-        user: item.user as SafeQUser,
-        success: item.success,
-        value: item.value,
-        error: item.error,
-      }));
+      // Map backend results to dialog format with full user data
+      const dialogResults = result.results.map((item) => {
+        // Find the full user object from selectedUsers
+        const fullUser = selectedUsers.find((u) => u.userName === item.user.userName);
+        return {
+          user: fullUser || (item.user as SafeQUser),
+          success: item.success,
+          value: item.value,
+          error: item.error,
+        };
+      });
 
       // Show results dialog
       setResultsDialog({
