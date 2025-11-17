@@ -1,12 +1,13 @@
 import { useState } from "react";
 import type { SafeQUser } from "../types/safeq";
 import { updateUserCard, updateUserPin, updateUserShortId, generateUserPin, generateUserOtp } from "../services/safeqClient";
+import { sendCredentialEmails, type CredentialType } from "../services/emailDelivery";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Trash2, Plus } from "lucide-react";
+import { Loader2, Trash2, Plus, Mail } from "lucide-react";
 
 interface EditUserModalProps {
   user: SafeQUser | null;
@@ -21,6 +22,7 @@ function EditUserModal({ user, onClose, onSuccess }: EditUserModalProps) {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [generatedOtp, setGeneratedOtp] = useState<string | null>(null);
   const [generatedPin, setGeneratedPin] = useState<string | null>(null);
+  const [sendingEmail, setSendingEmail] = useState<CredentialType | null>(null);
 
   if (!user) {
     return null;
@@ -133,6 +135,48 @@ function EditUserModal({ user, onClose, onSuccess }: EditUserModalProps) {
     }
   };
 
+  const handleSendEmail = async (type: CredentialType) => {
+    if (!user.email) {
+      setError("User has no email address configured");
+      setSuccessMessage(null);
+      return;
+    }
+
+    const credentialValue = type === "pin" ? currentShortId : generatedOtp;
+    if (!credentialValue) {
+      setError(`No ${type.toUpperCase()} value available to send`);
+      setSuccessMessage(null);
+      return;
+    }
+
+    setSendingEmail(type);
+    setError(null);
+    setSuccessMessage(null);
+
+    try {
+      const result = await sendCredentialEmails(
+        [
+          {
+            user,
+            pinOverride: type === "pin" ? credentialValue : undefined,
+            otpOverride: type === "otp" ? credentialValue : undefined,
+          },
+        ],
+        type
+      );
+
+      if (result.success > 0) {
+        setSuccessMessage(`${type.toUpperCase()} sent successfully to ${user.email}`);
+      } else {
+        setError(result.errors[0] || "Failed to send email");
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to send email");
+    } finally {
+      setSendingEmail(null);
+    }
+  };
+
   return (
     <Dialog open={!!user} onOpenChange={onClose}>
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-hidden flex flex-col">
@@ -184,9 +228,7 @@ function EditUserModal({ user, onClose, onSuccess }: EditUserModalProps) {
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Groups</p>
                 <p className="text-sm">
-                  {user.groupIds && user.groupIds.length > 0
-                    ? `${user.groupIds.length} group${user.groupIds.length !== 1 ? "s" : ""}`
-                    : "—"}
+                  {user.groupIds && user.groupIds.length > 0 ? `${user.groupIds.length} group${user.groupIds.length !== 1 ? "s" : ""}` : "—"}
                 </p>
               </div>
             </CardContent>
@@ -240,11 +282,23 @@ function EditUserModal({ user, onClose, onSuccess }: EditUserModalProps) {
               <div className="flex items-center justify-between rounded-md border bg-muted/50 p-3">
                 <span className="font-mono text-sm font-semibold">{currentShortId || "Not set"}</span>
                 <div className="flex gap-2">
-                  <Button onClick={handleGeneratePin} disabled={isSubmitting} size="sm">
+                  {currentShortId && user.email && (
+                    <Button
+                      onClick={() => handleSendEmail("pin")}
+                      disabled={isSubmitting || sendingEmail !== null}
+                      size="sm"
+                      variant="outline"
+                      title="Send PIN via email"
+                    >
+                      {sendingEmail === "pin" ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Mail className="h-4 w-4 mr-2" />}
+                      Send
+                    </Button>
+                  )}
+                  <Button onClick={handleGeneratePin} disabled={isSubmitting || sendingEmail !== null} size="sm">
                     Generate
                   </Button>
                   {currentShortId && (
-                    <Button variant="destructive" onClick={handleDeletePin} disabled={isSubmitting} size="sm">
+                    <Button variant="destructive" onClick={handleDeletePin} disabled={isSubmitting || sendingEmail !== null} size="sm">
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   )}
@@ -257,16 +311,28 @@ function EditUserModal({ user, onClose, onSuccess }: EditUserModalProps) {
           <Card>
             <CardHeader>
               <CardTitle>OTP</CardTitle>
-              <CardDescription>Alphanumeric one-time password</CardDescription>
+              <CardDescription>Alphanumeric one-time password (only visible when freshly generated)</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex items-center justify-between rounded-md border bg-muted/50 p-3">
                 <span className="font-mono text-sm font-semibold">{generatedOtp || "Not generated"}</span>
                 <div className="flex gap-2">
-                  <Button onClick={handleGenerateOtp} disabled={isSubmitting} size="sm">
+                  {generatedOtp && user.email && (
+                    <Button
+                      onClick={() => handleSendEmail("otp")}
+                      disabled={isSubmitting || sendingEmail !== null}
+                      size="sm"
+                      variant="outline"
+                      title="Send OTP via email"
+                    >
+                      {sendingEmail === "otp" ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Mail className="h-4 w-4 mr-2" />}
+                      Send
+                    </Button>
+                  )}
+                  <Button onClick={handleGenerateOtp} disabled={isSubmitting || sendingEmail !== null} size="sm">
                     Generate
                   </Button>
-                  <Button variant="destructive" onClick={handleDeleteOtp} disabled={isSubmitting} size="sm">
+                  <Button variant="destructive" onClick={handleDeleteOtp} disabled={isSubmitting || sendingEmail !== null} size="sm">
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>
