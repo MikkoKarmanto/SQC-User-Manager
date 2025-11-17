@@ -21,6 +21,7 @@ pub struct ShortIdSettings {
     pub use_lowercase: bool,
     pub use_numbers: bool,
     pub use_special: bool,
+    pub exclude_characters: String,
 }
 
 impl Default for ShortIdSettings {
@@ -31,6 +32,7 @@ impl Default for ShortIdSettings {
             use_lowercase: true,
             use_numbers: true,
             use_special: false,
+            exclude_characters: String::from("1lI0Oo"),
         }
     }
 }
@@ -66,11 +68,21 @@ pub fn generate_short_id(settings: &ShortIdSettings) -> String {
         charset.push_str("0123456789");
     }
 
-    let chars: Vec<char> = charset.chars().collect();
+    // Filter out excluded characters
+    let excluded: Vec<char> = settings.exclude_characters.chars().collect();
+    let chars: Vec<char> = charset.chars().filter(|c| !excluded.contains(c)).collect();
+
+    // Fallback to all numbers if filtering removed everything
+    let final_chars = if chars.is_empty() {
+        vec!['0', '1', '2', '3', '4', '5', '6', '7', '8', '9']
+    } else {
+        chars
+    };
+
     let mut rng = rand::thread_rng();
 
     (0..settings.length)
-        .map(|_| chars[rng.gen_range(0..chars.len())])
+        .map(|_| final_chars[rng.gen_range(0..final_chars.len())])
         .collect()
 }
 
@@ -101,6 +113,7 @@ mod tests {
             use_lowercase: false,
             use_numbers: true,
             use_special: false,
+            exclude_characters: String::new(),
         };
         let short_id = generate_short_id(&settings);
         assert_eq!(short_id.len(), 8);

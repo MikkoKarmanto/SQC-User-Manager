@@ -21,6 +21,12 @@ export type SafeQSettings = {
   tenantUrl: string;
   apiKey: string;
   pinLength?: number;
+  otpLength?: number;
+  otpUseUppercase?: boolean;
+  otpUseLowercase?: boolean;
+  otpUseNumbers?: boolean;
+  otpUseSpecial?: boolean;
+  otpExcludeCharacters?: string;
   shortIdLength?: number;
   shortIdUseUppercase?: boolean;
   shortIdUseLowercase?: boolean;

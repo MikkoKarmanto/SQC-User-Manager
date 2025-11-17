@@ -1,12 +1,14 @@
 import { useState, useCallback, useEffect } from "react";
-import type { ImportUser, SafeQAuthProvider } from "../types/safeq";
+import type { ImportUser, SafeQAuthProvider, SafeQUser } from "../types/safeq";
 import { parseCsv, readFileAsText } from "../utils/csvParser";
 import ImportGrid from "../components/ImportGrid";
+import ResultsDialog from "../components/ResultsDialog";
 import { createUsers, listAuthProviders } from "../services/safeqClient";
+import { type CredentialType } from "../services/emailDelivery";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Upload, X, AlertCircle, CheckCircle2, AlertTriangle } from "lucide-react";
+import { Upload, X, AlertCircle, AlertTriangle } from "lucide-react";
 
 function ImportPage() {
   const [users, setUsers] = useState<ImportUser[]>([]);
@@ -14,11 +16,21 @@ function ImportPage() {
   const [parseWarnings, setParseWarnings] = useState<string[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
-  const [uploadStatus, setUploadStatus] = useState<{ success: number; failed: number } | null>(null);
   const [providers, setProviders] = useState<SafeQAuthProvider[]>([]);
   const [selectedProviderId, setSelectedProviderId] = useState<number | null>(null);
   const [autoGeneratePin, setAutoGeneratePin] = useState(false);
   const [autoGenerateOtp, setAutoGenerateOtp] = useState(false);
+  const [resultsDialog, setResultsDialog] = useState<{
+    open: boolean;
+    type: CredentialType;
+    results: Array<{ user: SafeQUser; success: boolean; error?: string; pin?: string; otp?: string }>;
+    selectedUsers: SafeQUser[];
+  }>({
+    open: false,
+    type: "pin",
+    results: [],
+    selectedUsers: [],
+  });
 
   useEffect(() => {
     const fetchProviders = async () => {
@@ -49,7 +61,6 @@ function ImportPage() {
       setUsers(result.users);
       setParseErrors(result.errors);
       setParseWarnings(result.warnings);
-      setUploadStatus(null);
     } catch (error) {
       setParseErrors([`Failed to read file: ${error instanceof Error ? error.message : "Unknown error"}`]);
     }
@@ -99,11 +110,36 @@ function ImportPage() {
     }));
 
     setIsUploading(true);
-    setUploadStatus(null);
 
     try {
       const result = await createUsers(usersWithProvider, autoGeneratePin, autoGenerateOtp);
-      setUploadStatus(result);
+
+      // Determine the credential type based on what was generated
+      const credentialType: CredentialType = autoGeneratePin ? "pin" : autoGenerateOtp ? "otp" : "pin";
+
+      // Show results dialog with detailed user information
+      const dialogResults = result.results.map((item) => ({
+        user: item.user as SafeQUser,
+        success: item.success,
+        error: item.error,
+        pin: item.pin,
+        otp: item.otp,
+      }));
+
+      setResultsDialog({
+        open: true,
+        type: credentialType,
+        results: dialogResults,
+        selectedUsers: validUsers.map((u) => ({
+          id: 0, // Import users don't have IDs yet
+          userName: u.userName,
+          fullName: u.fullName,
+          email: u.email,
+          shortId: u.shortId,
+          otp: u.otp,
+          providerId: u.providerId ?? selectedProviderId ?? undefined,
+        })),
+      });
 
       if (result.failed === 0) {
         // Clear successful users
@@ -124,7 +160,6 @@ function ImportPage() {
     setUsers([]);
     setParseErrors([]);
     setParseWarnings([]);
-    setUploadStatus(null);
   };
 
   const validCount = users.filter((u) => u.isValid).length;
@@ -139,24 +174,47 @@ function ImportPage() {
       <Card className="mb-6">
         <CardContent className="pt-6">
           <div
-            className={`flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed p-12 transition-colors ${
-              isDragging
-                ? "border-primary bg-primary/5"
-                : "border-muted-foreground/25 hover:border-primary hover:bg-accent"
+            className={`rounded-lg border-2 border-dashed transition-colors ${
+              isDragging ? "border-primary bg-primary/5" : "border-muted-foreground/25 hover:border-primary hover:bg-accent"
             }`}
             onDrop={handleDrop}
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
           >
-            <Upload className="mb-4 h-12 w-12 text-muted-foreground" />
-            <p className="mb-2 text-lg font-medium">Drag and drop CSV file here</p>
-            <p className="mb-4 text-sm text-muted-foreground">or</p>
-            <label htmlFor="file-upload">
-              <Button variant="secondary" type="button" onClick={() => document.getElementById('file-upload')?.click()}>
-                Browse Files
-              </Button>
-              <input id="file-upload" type="file" accept=".csv" onChange={handleFileInputChange} className="hidden" />
-            </label>
+            {/* Main drop zone area */}
+            <div className="flex cursor-pointer flex-col items-center justify-center p-8">
+              <Upload className="mb-3 h-10 w-10 text-muted-foreground" />
+              <p className="mb-1 text-base font-medium">Drag and drop CSV file here</p>
+              <p className="mb-3 text-sm text-muted-foreground">or</p>
+              <label htmlFor="file-upload">
+                <Button variant="secondary" type="button" onClick={() => document.getElementById("file-upload")?.click()}>
+                  Browse Files
+                </Button>
+                <input id="file-upload" type="file" accept=".csv" onChange={handleFileInputChange} className="hidden" />
+              </label>
+            </div>
+
+            {/* CSV Format Info as footer */}
+            <div className="border-t bg-muted/30 px-6 py-3">
+              <div className="flex items-start gap-6">
+                <div className="flex-1">
+                  <p className="mb-1.5 text-xs font-semibold text-foreground">Required:</p>
+                  <p className="text-xs text-muted-foreground">
+                    <strong>UPN</strong> or <strong>Username</strong>
+                  </p>
+                </div>
+                <div className="flex-[2]">
+                  <p className="mb-1.5 text-xs font-semibold text-foreground">Optional:</p>
+                  <p className="text-xs text-muted-foreground">
+                    <strong>FullName</strong>, <strong>Email</strong>, <strong>CardID</strong>, <strong>PIN</strong>, <strong>OTP</strong>,{" "}
+                    <strong>ProviderID</strong>
+                  </p>
+                </div>
+                <div className="flex-shrink-0">
+                  <p className="text-xs text-muted-foreground/70">Delimiter auto-detected</p>
+                </div>
+              </div>
+            </div>
           </div>
 
           {parseErrors.length > 0 && (
@@ -186,21 +244,6 @@ function ImportPage() {
               </div>
             </div>
           )}
-
-          {uploadStatus && (
-            <div
-              className={`mt-4 flex items-center gap-2 rounded-md border p-4 ${
-                uploadStatus.failed === 0
-                  ? "border-green-200 bg-green-50 text-green-900 dark:border-green-900 dark:bg-green-950 dark:text-green-100"
-                  : "border-yellow-200 bg-yellow-50 text-yellow-900 dark:border-yellow-900 dark:bg-yellow-950 dark:text-yellow-100"
-              }`}
-            >
-              {uploadStatus.failed === 0 ? <CheckCircle2 className="h-5 w-5" /> : <AlertTriangle className="h-5 w-5" />}
-              <span>
-                Upload complete: {uploadStatus.success} succeeded, {uploadStatus.failed} failed
-              </span>
-            </div>
-          )}
         </CardContent>
       </Card>
 
@@ -210,7 +253,7 @@ function ImportPage() {
           <CardDescription>Configure import options and upload users to SafeQ Cloud</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-wrap items-center gap-4">
+          <div className="flex flex-wrap items-center gap-4 mb-4">
             <div className="flex items-center gap-2">
               <Label className="text-sm font-medium">Default Provider:</Label>
               <select
@@ -262,38 +305,13 @@ function ImportPage() {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>CSV Format</CardTitle>
-          <CardDescription>Your CSV file should include the following columns</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <p className="mb-3 text-sm text-muted-foreground">Delimiter will be auto-detected. Supported columns:</p>
-          <ul className="space-y-2 text-sm text-muted-foreground">
-            <li>
-              <strong>UPN</strong> or <strong>Username</strong> (required)
-            </li>
-            <li>
-              <strong>FullName</strong> (optional)
-            </li>
-            <li>
-              <strong>EmailAddress</strong> or <strong>Email</strong> (optional)
-            </li>
-            <li>
-              <strong>CardID</strong> (optional)
-            </li>
-            <li>
-              <strong>ShortID</strong> or <strong>PIN</strong> (optional - numeric code, detailtype=5)
-            </li>
-            <li>
-              <strong>OTP</strong> (optional - alphanumeric code, detailtype=10)
-            </li>
-            <li>
-              <strong>PID</strong> or <strong>ProviderID</strong> (optional - authentication provider ID, or use dropdown above)
-            </li>
-          </ul>
-        </CardContent>
-      </Card>
+      <ResultsDialog
+        open={resultsDialog.open}
+        onClose={() => setResultsDialog({ open: false, type: "pin", results: [], selectedUsers: [] })}
+        type={resultsDialog.type}
+        results={resultsDialog.results}
+        selectedUsers={resultsDialog.selectedUsers}
+      />
     </div>
   );
 }

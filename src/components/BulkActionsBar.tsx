@@ -4,8 +4,6 @@ interface BulkActionsBarProps {
   selectedCount: number;
   onGeneratePins: () => void;
   onGenerateOtps: () => void;
-  onEmailPins: () => void;
-  onEmailOtps: () => void;
   onClearSelection: () => void;
   isProcessing?: boolean;
 }
@@ -14,8 +12,6 @@ function BulkActionsBar({
   selectedCount,
   onGeneratePins,
   onGenerateOtps,
-  onEmailPins,
-  onEmailOtps,
   onClearSelection,
   isProcessing = false,
 }: BulkActionsBarProps) {
@@ -45,31 +41,11 @@ function BulkActionsBar({
         <button
           type="button"
           className="bulk-btn bulk-btn-primary"
-          onClick={onEmailPins}
-          disabled={isProcessing}
-          title="Send PIN emails for all selected users"
-        >
-          Email PINs
-        </button>
-
-        <button
-          type="button"
-          className="bulk-btn bulk-btn-primary"
           onClick={onGenerateOtps}
           disabled={isProcessing}
           title="Generate OTPs for all selected users"
         >
           {isProcessing ? "Processing..." : "Generate OTPs"}
-        </button>
-
-        <button
-          type="button"
-          className="bulk-btn bulk-btn-primary"
-          onClick={onEmailOtps}
-          disabled={isProcessing}
-          title="Send OTP emails for all selected users"
-        >
-          Email OTPs
         </button>
 
         <button type="button" className="bulk-btn bulk-btn-secondary" onClick={onClearSelection} disabled={isProcessing} title="Clear selection">
