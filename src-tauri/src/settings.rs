@@ -17,6 +17,18 @@ pub struct SafeQSettings {
     #[serde(default)]
     pub pin_length: Option<usize>,
     #[serde(default)]
+    pub otp_length: Option<usize>,
+    #[serde(default)]
+    pub otp_use_uppercase: Option<bool>,
+    #[serde(default)]
+    pub otp_use_lowercase: Option<bool>,
+    #[serde(default)]
+    pub otp_use_numbers: Option<bool>,
+    #[serde(default)]
+    pub otp_use_special: Option<bool>,
+    #[serde(default)]
+    pub otp_exclude_characters: Option<String>,
+    #[serde(default)]
     pub short_id_length: Option<usize>,
     #[serde(default)]
     pub short_id_use_uppercase: Option<bool>,
@@ -120,6 +132,18 @@ struct StoredSafeQSettings {
     #[serde(default)]
     pin_length: Option<usize>,
     #[serde(default)]
+    otp_length: Option<usize>,
+    #[serde(default)]
+    otp_use_uppercase: Option<bool>,
+    #[serde(default)]
+    otp_use_lowercase: Option<bool>,
+    #[serde(default)]
+    otp_use_numbers: Option<bool>,
+    #[serde(default)]
+    otp_use_special: Option<bool>,
+    #[serde(default)]
+    otp_exclude_characters: Option<String>,
+    #[serde(default)]
     short_id_length: Option<usize>,
     #[serde(default)]
     short_id_use_uppercase: Option<bool>,
@@ -188,6 +212,12 @@ pub fn load_safeq_settings(app: &AppHandle) -> Result<Option<SafeQSettings>, Set
             tenant_url,
             api_key,
             pin_length: stored.pin_length,
+            otp_length: stored.otp_length,
+            otp_use_uppercase: stored.otp_use_uppercase,
+            otp_use_lowercase: stored.otp_use_lowercase,
+            otp_use_numbers: stored.otp_use_numbers,
+            otp_use_special: stored.otp_use_special,
+            otp_exclude_characters: stored.otp_exclude_characters,
             short_id_length: stored.short_id_length,
             short_id_use_uppercase: stored.short_id_use_uppercase,
             short_id_use_lowercase: stored.short_id_use_lowercase,

@@ -29,6 +29,12 @@ function SettingsPage() {
   const [tenantUrl, setTenantUrl] = useState("");
   const [apiKey, setApiKey] = useState("");
   const [pinLength, setPinLength] = useState(4);
+  const [otpLength, setOtpLength] = useState(8);
+  const [otpUseUppercase, setOtpUseUppercase] = useState(true);
+  const [otpUseLowercase, setOtpUseLowercase] = useState(true);
+  const [otpUseNumbers, setOtpUseNumbers] = useState(true);
+  const [otpUseSpecial, setOtpUseSpecial] = useState(false);
+  const [otpExcludeCharacters, setOtpExcludeCharacters] = useState("1lI0Oo");
   const [shortIdLength, setShortIdLength] = useState(6);
   const [shortIdUseUppercase, setShortIdUseUppercase] = useState(true);
   const [shortIdUseLowercase, setShortIdUseLowercase] = useState(true);
@@ -80,6 +86,12 @@ function SettingsPage() {
         setTenantUrl(stored.tenantUrl);
         setApiKey(stored.apiKey);
         setPinLength(stored.pinLength ?? 4);
+        setOtpLength(stored.otpLength ?? 8);
+        setOtpUseUppercase(stored.otpUseUppercase ?? true);
+        setOtpUseLowercase(stored.otpUseLowercase ?? true);
+        setOtpUseNumbers(stored.otpUseNumbers ?? true);
+        setOtpUseSpecial(stored.otpUseSpecial ?? false);
+        setOtpExcludeCharacters(stored.otpExcludeCharacters ?? "1lI0Oo");
         setShortIdLength(stored.shortIdLength ?? 6);
         setShortIdUseUppercase(stored.shortIdUseUppercase ?? true);
         setShortIdUseLowercase(stored.shortIdUseLowercase ?? true);
@@ -109,6 +121,12 @@ function SettingsPage() {
       normalizeTenantUrlWithFallback(tenantUrl) !== initialSettings.tenantUrl ||
       apiKey.trim() !== initialSettings.apiKey ||
       pinLength !== (initialSettings.pinLength ?? 4) ||
+      otpLength !== (initialSettings.otpLength ?? 8) ||
+      otpUseUppercase !== (initialSettings.otpUseUppercase ?? true) ||
+      otpUseLowercase !== (initialSettings.otpUseLowercase ?? true) ||
+      otpUseNumbers !== (initialSettings.otpUseNumbers ?? true) ||
+      otpUseSpecial !== (initialSettings.otpUseSpecial ?? false) ||
+      otpExcludeCharacters !== (initialSettings.otpExcludeCharacters ?? "1lI0Oo") ||
       shortIdLength !== (initialSettings.shortIdLength ?? 6) ||
       shortIdUseUppercase !== (initialSettings.shortIdUseUppercase ?? true) ||
       shortIdUseLowercase !== (initialSettings.shortIdUseLowercase ?? true) ||
@@ -121,6 +139,12 @@ function SettingsPage() {
     tenantUrl,
     apiKey,
     pinLength,
+    otpLength,
+    otpUseUppercase,
+    otpUseLowercase,
+    otpUseNumbers,
+    otpUseSpecial,
+    otpExcludeCharacters,
     shortIdLength,
     shortIdUseUppercase,
     shortIdUseLowercase,
@@ -137,6 +161,12 @@ function SettingsPage() {
       tenantUrl,
       apiKey,
       pinLength,
+      otpLength,
+      otpUseUppercase,
+      otpUseLowercase,
+      otpUseNumbers,
+      otpUseSpecial,
+      otpExcludeCharacters,
       shortIdLength,
       shortIdUseUppercase,
       shortIdUseLowercase,
@@ -161,6 +191,12 @@ function SettingsPage() {
       setTenantUrl(settings.tenantUrl);
       setApiKey(settings.apiKey);
       setPinLength(settings.pinLength ?? 4);
+      setOtpLength(settings.otpLength ?? 8);
+      setOtpUseUppercase(settings.otpUseUppercase ?? true);
+      setOtpUseLowercase(settings.otpUseLowercase ?? true);
+      setOtpUseNumbers(settings.otpUseNumbers ?? true);
+      setOtpUseSpecial(settings.otpUseSpecial ?? false);
+      setOtpExcludeCharacters(settings.otpExcludeCharacters ?? "1lI0Oo");
       setShortIdLength(settings.shortIdLength ?? 6);
       setShortIdUseUppercase(settings.shortIdUseUppercase ?? true);
       setShortIdUseLowercase(settings.shortIdUseLowercase ?? true);
@@ -329,6 +365,85 @@ function SettingsPage() {
               />
               <p className="text-sm text-muted-foreground">Number of digits for generated PINs (4-8 digits, numeric only).</p>
             </div>
+
+            <div className="space-y-3">
+              <div className="space-y-2">
+                <Label htmlFor="otp-length">OTP Length</Label>
+                <Input
+                  id="otp-length"
+                  type="number"
+                  min="4"
+                  max="16"
+                  value={otpLength}
+                  onChange={(e) => setOtpLength(parseInt(e.target.value) || 8)}
+                  disabled={isLoading || isSaving}
+                />
+                <p className="text-sm text-muted-foreground">Number of characters for generated OTPs (4-16 characters).</p>
+              </div>
+
+              <div className="space-y-2">
+                <Label>OTP Character Types</Label>
+                <div className="grid grid-cols-2 gap-3">
+                  <label className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      checked={otpUseUppercase}
+                      onChange={(e) => setOtpUseUppercase(e.target.checked)}
+                      disabled={isLoading || isSaving}
+                      className="h-4 w-4 rounded border-gray-300"
+                    />
+                    <span className="text-sm">Uppercase (A-Z)</span>
+                  </label>
+                  <label className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      checked={otpUseLowercase}
+                      onChange={(e) => setOtpUseLowercase(e.target.checked)}
+                      disabled={isLoading || isSaving}
+                      className="h-4 w-4 rounded border-gray-300"
+                    />
+                    <span className="text-sm">Lowercase (a-z)</span>
+                  </label>
+                  <label className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      checked={otpUseNumbers}
+                      onChange={(e) => setOtpUseNumbers(e.target.checked)}
+                      disabled={isLoading || isSaving}
+                      className="h-4 w-4 rounded border-gray-300"
+                    />
+                    <span className="text-sm">Numbers (0-9)</span>
+                  </label>
+                  <label className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      checked={otpUseSpecial}
+                      onChange={(e) => setOtpUseSpecial(e.target.checked)}
+                      disabled={isLoading || isSaving}
+                      className="h-4 w-4 rounded border-gray-300"
+                    />
+                    <span className="text-sm">Special (!@#$%^&*)</span>
+                  </label>
+                </div>
+                <p className="text-sm text-muted-foreground">At least one character type must be selected.</p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="otp-exclude">Exclude Characters</Label>
+                <Input
+                  id="otp-exclude"
+                  type="text"
+                  value={otpExcludeCharacters}
+                  onChange={(e) => setOtpExcludeCharacters(e.target.value)}
+                  disabled={isLoading || isSaving}
+                  placeholder="1lI0Oo"
+                />
+                <p className="text-sm text-muted-foreground">
+                  Characters to exclude from generation (e.g., <code className="rounded bg-muted px-1 py-0.5">1lI0Oo</code> to avoid confusion between
+                  similar-looking characters).
+                </p>
+              </div>
+            </div>
           </CardContent>
         </Card>
 
@@ -359,6 +474,12 @@ function prepareSettings(
   tenantUrl: string,
   apiKey: string,
   pinLength: number,
+  otpLength: number,
+  otpUseUppercase: boolean,
+  otpUseLowercase: boolean,
+  otpUseNumbers: boolean,
+  otpUseSpecial: boolean,
+  otpExcludeCharacters: string,
   shortIdLength: number,
   shortIdUseUppercase: boolean,
   shortIdUseLowercase: boolean,
@@ -396,6 +517,12 @@ function prepareSettings(
       tenantUrl: normalizedUrl,
       apiKey: trimmedKey,
       pinLength,
+      otpLength,
+      otpUseUppercase,
+      otpUseLowercase,
+      otpUseNumbers,
+      otpUseSpecial,
+      otpExcludeCharacters,
       shortIdLength,
       shortIdUseUppercase,
       shortIdUseLowercase,
