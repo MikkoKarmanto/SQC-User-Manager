@@ -5,6 +5,8 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { CheckCircle2, XCircle, Mail, Download, Loader2 } from "lucide-react";
+import { save } from "@tauri-apps/plugin-dialog";
+import { writeTextFile } from "@tauri-apps/plugin-fs";
 
 interface ResultItem {
   user: SafeQUser;
@@ -23,6 +25,7 @@ interface ResultsDialogProps {
 function ResultsDialog({ open, onClose, type, results }: ResultsDialogProps) {
   const [sendingEmails, setSendingEmails] = useState(false);
   const [emailResults, setEmailResults] = useState<{ success: number; failed: number; errors: string[] } | null>(null);
+  const [downloadStatus, setDownloadStatus] = useState<{ type: "success" | "error"; message: string } | null>(null);
 
   const successCount = results.filter((r) => r.success).length;
   const failedCount = results.filter((r) => !r.success).length;
@@ -53,7 +56,8 @@ function ResultsDialog({ open, onClose, type, results }: ResultsDialogProps) {
     }
   };
 
-  const handleDownloadCSV = () => {
+  const handleDownloadCSV = async () => {
+    setDownloadStatus(null);
     const headers = ["Username", "Full Name", "Email", label, "Status", "Error"];
     const rows = results.map((result) => [
       result.user.userName || "",
@@ -66,15 +70,23 @@ function ResultsDialog({ open, onClose, type, results }: ResultsDialogProps) {
 
     const csvContent = [headers, ...rows].map((row) => row.map((cell) => `"${cell}"`).join(",")).join("\n");
 
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const link = document.createElement("a");
-    const url = URL.createObjectURL(blob);
-    link.setAttribute("href", url);
-    link.setAttribute("download", `${type}_generation_results_${new Date().toISOString().split("T")[0]}.csv`);
-    link.style.visibility = "hidden";
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    try {
+      const filePath = await save({
+        defaultPath: `${type}_generation_results_${new Date().toISOString().split("T")[0]}.csv`,
+        filters: [{ name: "CSV", extensions: ["csv"] }],
+      });
+
+      if (filePath) {
+        await writeTextFile(filePath, csvContent);
+        setDownloadStatus({ type: "success", message: `File saved successfully to ${filePath}` });
+      }
+    } catch (err) {
+      console.error("Failed to save CSV:", err);
+      setDownloadStatus({
+        type: "error",
+        message: err instanceof Error ? err.message : "Failed to save file",
+      });
+    }
   };
 
   return (
@@ -89,6 +101,21 @@ function ResultsDialog({ open, onClose, type, results }: ResultsDialogProps) {
         </DialogHeader>
 
         <div className="flex-1 overflow-auto">
+          {downloadStatus && (
+            <div
+              className={`mb-4 flex items-center gap-2 rounded-md border p-4 ${
+                downloadStatus.type === "success"
+                  ? "border-green-200 bg-green-50 text-green-900 dark:border-green-900 dark:bg-green-950 dark:text-green-100"
+                  : "border-red-200 bg-red-50 text-red-900 dark:border-red-900 dark:bg-red-950 dark:text-red-100"
+              }`}
+            >
+              {downloadStatus.type === "success" ? <CheckCircle2 className="h-5 w-5" /> : <XCircle className="h-5 w-5" />}
+              <div className="flex-1">
+                <p className="text-sm">{downloadStatus.message}</p>
+              </div>
+            </div>
+          )}
+
           {emailResults && (
             <div
               className={`mb-4 flex items-center gap-2 rounded-md border p-4 ${
@@ -127,11 +154,7 @@ function ResultsDialog({ open, onClose, type, results }: ResultsDialogProps) {
                 {results.map((result) => (
                   <TableRow key={result.user.id}>
                     <TableCell>
-                      {result.success ? (
-                        <CheckCircle2 className="h-4 w-4 text-green-600" />
-                      ) : (
-                        <XCircle className="h-4 w-4 text-red-600" />
-                      )}
+                      {result.success ? <CheckCircle2 className="h-4 w-4 text-green-600" /> : <XCircle className="h-4 w-4 text-red-600" />}
                     </TableCell>
                     <TableCell className="font-mono text-sm">{result.user.userName}</TableCell>
                     <TableCell>{result.user.fullName || "—"}</TableCell>
