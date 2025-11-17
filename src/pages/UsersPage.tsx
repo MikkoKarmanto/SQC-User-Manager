@@ -1,15 +1,18 @@
 import { useCallback, useEffect, useState, useMemo } from "react";
-import { listAuthProviders, listUsersForProvider, generateBulkPins, generateBulkOtps } from "../services/safeqClient";
+import { listAuthProviders, listUsersForProvider, generateBulkPins, generateBulkOtps, type BulkGenerationResult } from "../services/safeqClient";
+import { type CredentialType } from "../services/emailDelivery";
 import { extractUsers, type SafeQAuthProvider, type SafeQUser } from "../types/safeq";
 import UserTable from "../components/UserTable";
 import EditUserModal from "../components/EditUserModal";
+import ResultsDialog from "../components/ResultsDialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import UserFilters, { type FilterOptions, type SortField, type SortDirection } from "../components/UserFilters";
 import BulkActionsBar from "../components/BulkActionsBar";
-import { RefreshCw, AlertCircle, CheckCircle2 } from "lucide-react";
+import MessageBox from "../components/MessageBox";
+import { RefreshCw, AlertCircle } from "lucide-react";
 
 interface ProviderData {
   provider: SafeQAuthProvider;
@@ -33,6 +36,24 @@ function UsersPage() {
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
   const [isBulkProcessing, setIsBulkProcessing] = useState(false);
   const [bulkMessage, setBulkMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
+  // Auto-dismiss bulk message after 5 seconds
+  useEffect(() => {
+    if (bulkMessage) {
+      const timer = setTimeout(() => setBulkMessage(null), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [bulkMessage]);
+
+  const [resultsDialog, setResultsDialog] = useState<{
+    open: boolean;
+    type: CredentialType;
+    results: Array<{ user: SafeQUser; success: boolean; value?: string; error?: string }>;
+  }>({
+    open: false,
+    type: "pin",
+    results: [],
+  });
 
   const fetchProviders = useCallback(async () => {
     setIsLoadingProviders(true);
@@ -198,7 +219,26 @@ function UsersPage() {
         providerId: user.providerId || null,
       }));
 
-      const result = await generateBulkPins(usersToUpdate);
+      const result: BulkGenerationResult = await generateBulkPins(usersToUpdate);
+
+      // Map backend results to dialog format with full user data
+      const dialogResults = result.results.map((item) => {
+        // Find the full user object from selectedUsers
+        const fullUser = selectedUsers.find((u) => u.userName === (item.user as SafeQUser).userName);
+        return {
+          user: fullUser || (item.user as SafeQUser),
+          success: item.success,
+          value: item.value,
+          error: item.error,
+        };
+      });
+
+      // Show results dialog
+      setResultsDialog({
+        open: true,
+        type: "pin",
+        results: dialogResults,
+      });
 
       if (result.failed > 0) {
         setBulkMessage({
@@ -238,7 +278,26 @@ function UsersPage() {
         providerId: user.providerId || null,
       }));
 
-      const result = await generateBulkOtps(usersToUpdate);
+      const result: BulkGenerationResult = await generateBulkOtps(usersToUpdate);
+
+      // Map backend results to dialog format with full user data
+      const dialogResults = result.results.map((item) => {
+        // Find the full user object from selectedUsers
+        const fullUser = selectedUsers.find((u) => u.userName === (item.user as SafeQUser).userName);
+        return {
+          user: fullUser || (item.user as SafeQUser),
+          success: item.success,
+          value: item.value,
+          error: item.error,
+        };
+      });
+
+      // Show results dialog
+      setResultsDialog({
+        open: true,
+        type: "otp",
+        results: dialogResults,
+      });
 
       if (result.failed > 0) {
         setBulkMessage({
@@ -318,25 +377,9 @@ function UsersPage() {
           )}
         </CardHeader>
         <CardContent>
-          {providersError && (
-            <div className="mb-4 flex items-center gap-2 rounded-md border border-red-200 bg-red-50 p-4 text-red-900 dark:border-red-900 dark:bg-red-950 dark:text-red-100">
-              <AlertCircle className="h-5 w-5" />
-              <span>{providersError}</span>
-            </div>
-          )}
+          {providersError && <MessageBox type="error" message={providersError} onDismiss={() => setProvidersError(null)} className="mb-4" />}
 
-          {bulkMessage && (
-            <div
-              className={`mb-4 flex items-center gap-2 rounded-md border p-4 ${
-                bulkMessage.type === "success"
-                  ? "border-green-200 bg-green-50 text-green-900 dark:border-green-900 dark:bg-green-950 dark:text-green-100"
-                  : "border-red-200 bg-red-50 text-red-900 dark:border-red-900 dark:bg-red-950 dark:text-red-100"
-              }`}
-            >
-              {bulkMessage.type === "success" ? <CheckCircle2 className="h-5 w-5" /> : <AlertCircle className="h-5 w-5" />}
-              <span>{bulkMessage.text}</span>
-            </div>
-          )}
+          {bulkMessage && <MessageBox type={bulkMessage.type} message={bulkMessage.text} onDismiss={() => setBulkMessage(null)} className="mb-4" />}
 
           {!providersError && !isLoadingProviders && providers.length === 0 && (
             <p className="text-sm text-muted-foreground">No authentication providers found. Make sure your settings are configured correctly.</p>
@@ -415,6 +458,12 @@ function UsersPage() {
       </Card>
 
       <EditUserModal key={selectedUser?.id} user={selectedUser} onClose={() => setSelectedUser(null)} onSuccess={handleRefresh} />
+      <ResultsDialog
+        open={resultsDialog.open}
+        onClose={() => setResultsDialog({ ...resultsDialog, open: false })}
+        type={resultsDialog.type}
+        results={resultsDialog.results}
+      />
     </div>
   );
 }

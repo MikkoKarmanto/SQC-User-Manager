@@ -1,3 +1,4 @@
+mod email;
 mod generator;
 mod safeq_api;
 mod settings;
@@ -150,17 +151,28 @@ async fn generate_bulk_pins(
 
     let mut success_count = 0;
     let mut failed_count = 0;
-    let mut errors: Vec<String> = Vec::new();
+    let mut results: Vec<serde_json::Value> = Vec::new();
 
     for user in users {
         let username = user["userName"].as_str().unwrap_or("");
         let provider_id = user["providerId"].as_i64();
 
         match client.generate_pin(username, provider_id, &settings).await {
-            Ok(_) => success_count += 1,
+            Ok(result) => {
+                success_count += 1;
+                results.push(serde_json::json!({
+                    "user": user,
+                    "success": true,
+                    "value": result["pin"]
+                }));
+            }
             Err(e) => {
                 failed_count += 1;
-                errors.push(format!("{}: {}", username, e));
+                results.push(serde_json::json!({
+                    "user": user,
+                    "success": false,
+                    "error": e.to_string()
+                }));
             }
         }
     }
@@ -168,7 +180,7 @@ async fn generate_bulk_pins(
     Ok(serde_json::json!({
         "success": success_count,
         "failed": failed_count,
-        "errors": errors
+        "results": results
     }))
 }
 
@@ -186,17 +198,28 @@ async fn generate_bulk_otps(
 
     let mut success_count = 0;
     let mut failed_count = 0;
-    let mut errors: Vec<String> = Vec::new();
+    let mut results: Vec<serde_json::Value> = Vec::new();
 
     for user in users {
         let username = user["userName"].as_str().unwrap_or("");
         let provider_id = user["providerId"].as_i64();
 
         match client.generate_otp(username, provider_id, &settings).await {
-            Ok(_) => success_count += 1,
+            Ok(result) => {
+                success_count += 1;
+                results.push(serde_json::json!({
+                    "user": user,
+                    "success": true,
+                    "value": result["otp"]
+                }));
+            }
             Err(e) => {
                 failed_count += 1;
-                errors.push(format!("{}: {}", username, e));
+                results.push(serde_json::json!({
+                    "user": user,
+                    "success": false,
+                    "error": e.to_string()
+                }));
             }
         }
     }
@@ -204,7 +227,7 @@ async fn generate_bulk_otps(
     Ok(serde_json::json!({
         "success": success_count,
         "failed": failed_count,
-        "errors": errors
+        "results": results
     }))
 }
 
@@ -224,6 +247,7 @@ async fn create_users(
 
     let mut success_count = 0;
     let mut failed_count = 0;
+    let mut results: Vec<serde_json::Value> = Vec::new();
 
     for user in users {
         let username = user["userName"].as_str().unwrap_or("");
@@ -256,14 +280,66 @@ async fn create_users(
             )
             .await
         {
-            Ok(_) => success_count += 1,
-            Err(_) => failed_count += 1,
+            Ok(_) => {
+                success_count += 1;
+                let mut result_json = serde_json::json!({
+                    "user": {
+                        "userName": username,
+                        "fullName": full_name,
+                        "email": email,
+                        "providerId": provider_id,
+                    },
+                    "success": true,
+                });
+                // Include generated credentials in the result
+                if let Some(pin_value) = &short_id {
+                    result_json["pin"] = serde_json::json!(pin_value);
+                }
+                if let Some(otp_value) = &otp {
+                    result_json["otp"] = serde_json::json!(otp_value);
+                }
+                results.push(result_json);
+            }
+            Err(err) => {
+                failed_count += 1;
+                results.push(serde_json::json!({
+                    "user": {
+                        "userName": username,
+                        "fullName": full_name,
+                        "email": email,
+                        "providerId": provider_id,
+                    },
+                    "success": false,
+                    "error": err.to_string(),
+                }));
+            }
         }
     }
 
     Ok(serde_json::json!({
         "success": success_count,
-        "failed": failed_count
+        "failed": failed_count,
+        "results": results,
+    }))
+}
+
+#[tauri::command]
+async fn send_graph_emails(
+    app: tauri::AppHandle,
+    messages: Vec<email::PreparedEmailPayload>,
+) -> Result<serde_json::Value, String> {
+    let settings = settings::load_safeq_settings(&app)
+        .map_err(|error| error.to_string())?
+        .ok_or("Settings not configured")?;
+
+    let summary = email::send_graph_emails(&settings.email_settings, &messages)
+        .await
+        .map_err(|error| error.to_string())?;
+
+    Ok(serde_json::json!({
+        "success": summary.success,
+        "failed": summary.failed,
+        "errors": summary.errors,
     }))
 }
 
@@ -273,6 +349,8 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_store::Builder::default().build())
         .plugin(tauri_plugin_window_state::Builder::default().build())
+        .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_fs::init())
         .invoke_handler(tauri::generate_handler![
             get_safeq_settings,
             list_safeq_users,
@@ -285,7 +363,8 @@ pub fn run() {
             generate_user_otp,
             generate_bulk_pins,
             generate_bulk_otps,
-            create_users
+            create_users,
+            send_graph_emails
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

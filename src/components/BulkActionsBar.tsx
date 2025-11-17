@@ -22,9 +22,11 @@ function BulkActionsBar({
   return (
     <div className="bulk-actions-bar">
       <div className="bulk-info">
-        <span className="bulk-count">{selectedCount} user{selectedCount !== 1 ? "s" : ""} selected</span>
+        <span className="bulk-count">
+          {selectedCount} user{selectedCount !== 1 ? "s" : ""} selected
+        </span>
       </div>
-      
+
       <div className="bulk-buttons">
         <button
           type="button"
@@ -35,7 +37,7 @@ function BulkActionsBar({
         >
           {isProcessing ? "Processing..." : "Generate PINs"}
         </button>
-        
+
         <button
           type="button"
           className="bulk-btn bulk-btn-primary"
@@ -45,14 +47,8 @@ function BulkActionsBar({
         >
           {isProcessing ? "Processing..." : "Generate OTPs"}
         </button>
-        
-        <button
-          type="button"
-          className="bulk-btn bulk-btn-secondary"
-          onClick={onClearSelection}
-          disabled={isProcessing}
-          title="Clear selection"
-        >
+
+        <button type="button" className="bulk-btn bulk-btn-secondary" onClick={onClearSelection} disabled={isProcessing} title="Clear selection">
           Clear Selection
         </button>
       </div>

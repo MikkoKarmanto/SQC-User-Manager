@@ -148,7 +148,9 @@ impl SafeQClient {
 
         // Update the user with the generated PIN (detailtype=5)
         self.update_user_detail(username, provider_id, UserDetailType::Pin, Some(&pin))
-            .await
+            .await?;
+
+        Ok(serde_json::json!({ "pin": pin }))
     }
 
     /// Generate a new OTP (One Time Password) for a user
@@ -158,13 +160,17 @@ impl SafeQClient {
         provider_id: Option<i64>,
         settings: &SafeQSettings,
     ) -> Result<Value, SafeQApiError> {
-        // Generate a random OTP using settings or defaults
+        // Generate a random OTP using OTP-specific settings
         let gen_settings = ShortIdSettings {
-            length: settings.short_id_length.unwrap_or(6),
-            use_uppercase: settings.short_id_use_uppercase.unwrap_or(true),
-            use_lowercase: settings.short_id_use_lowercase.unwrap_or(true),
-            use_numbers: settings.short_id_use_numbers.unwrap_or(true),
-            use_special: settings.short_id_use_special.unwrap_or(false),
+            length: settings.otp_length.unwrap_or(8),
+            use_uppercase: settings.otp_use_uppercase.unwrap_or(true),
+            use_lowercase: settings.otp_use_lowercase.unwrap_or(true),
+            use_numbers: settings.otp_use_numbers.unwrap_or(true),
+            use_special: settings.otp_use_special.unwrap_or(false),
+            exclude_characters: settings
+                .otp_exclude_characters
+                .clone()
+                .unwrap_or_else(|| String::from("1lI0Oo")),
         };
         let otp = gen_short_id(&gen_settings);
 
@@ -343,11 +349,15 @@ pub fn generate_pin_value(settings: &SafeQSettings) -> String {
 /// Generate an OTP value using the given settings
 pub fn generate_otp_value(settings: &SafeQSettings) -> String {
     let gen_settings = ShortIdSettings {
-        length: settings.short_id_length.unwrap_or(6),
-        use_uppercase: settings.short_id_use_uppercase.unwrap_or(true),
-        use_lowercase: settings.short_id_use_lowercase.unwrap_or(true),
-        use_numbers: settings.short_id_use_numbers.unwrap_or(true),
-        use_special: settings.short_id_use_special.unwrap_or(false),
+        length: settings.otp_length.unwrap_or(8),
+        use_uppercase: settings.otp_use_uppercase.unwrap_or(true),
+        use_lowercase: settings.otp_use_lowercase.unwrap_or(true),
+        use_numbers: settings.otp_use_numbers.unwrap_or(true),
+        use_special: settings.otp_use_special.unwrap_or(false),
+        exclude_characters: settings
+            .otp_exclude_characters
+            .clone()
+            .unwrap_or_else(|| String::from("1lI0Oo")),
     };
     gen_short_id(&gen_settings)
 }
@@ -404,8 +414,6 @@ impl std::error::Error for SafeQApiError {
         }
     }
 }
-
-
 
 fn truncate_body(body: &str) -> String {
     let trimmed = body.trim();

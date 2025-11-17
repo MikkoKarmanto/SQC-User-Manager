@@ -12,6 +12,34 @@ function ImportGrid({ users, onUpdate }: ImportGridProps) {
   const [editingCell, setEditingCell] = useState<{ id: string; field: string } | null>(null);
   const [editValue, setEditValue] = useState("");
 
+  const editableFields: (keyof ImportUser)[] = ["userName", "fullName", "email", "cardId", "shortId", "otp", "providerId"];
+
+  const moveToNextField = (currentUserId: string, currentField: string, direction: "next" | "prev" = "next") => {
+    const currentFieldIndex = editableFields.indexOf(currentField as keyof ImportUser);
+    const currentUserIndex = users.findIndex((u) => u.id === currentUserId);
+
+    if (currentFieldIndex === -1 || currentUserIndex === -1) return;
+
+    let nextFieldIndex = direction === "next" ? currentFieldIndex + 1 : currentFieldIndex - 1;
+    let nextUserIndex = currentUserIndex;
+
+    // Move to next row if at end of fields
+    if (nextFieldIndex >= editableFields.length) {
+      nextFieldIndex = 0;
+      nextUserIndex = currentUserIndex + 1;
+    } else if (nextFieldIndex < 0) {
+      nextFieldIndex = editableFields.length - 1;
+      nextUserIndex = currentUserIndex - 1;
+    }
+
+    // Check if there's a next user
+    if (nextUserIndex >= 0 && nextUserIndex < users.length) {
+      const nextUser = users[nextUserIndex];
+      const nextField = editableFields[nextFieldIndex];
+      handleCellClick(nextUser, nextField);
+    }
+  };
+
   const handleCellClick = (user: ImportUser, field: string) => {
     setEditingCell({ id: user.id, field });
     const value = (user as any)[field];
@@ -45,7 +73,13 @@ function ImportGrid({ users, onUpdate }: ImportGridProps) {
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") {
+    if (!editingCell) return;
+
+    if (e.key === "Tab") {
+      e.preventDefault();
+      handleCellBlur();
+      moveToNextField(editingCell.id, editingCell.field, e.shiftKey ? "prev" : "next");
+    } else if (e.key === "Enter") {
       handleCellBlur();
     } else if (e.key === "Escape") {
       setEditingCell(null);
