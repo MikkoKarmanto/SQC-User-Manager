@@ -139,24 +139,47 @@ function ImportPage() {
       <Card className="mb-6">
         <CardContent className="pt-6">
           <div
-            className={`flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed p-12 transition-colors ${
-              isDragging
-                ? "border-primary bg-primary/5"
-                : "border-muted-foreground/25 hover:border-primary hover:bg-accent"
+            className={`rounded-lg border-2 border-dashed transition-colors ${
+              isDragging ? "border-primary bg-primary/5" : "border-muted-foreground/25 hover:border-primary hover:bg-accent"
             }`}
             onDrop={handleDrop}
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
           >
-            <Upload className="mb-4 h-12 w-12 text-muted-foreground" />
-            <p className="mb-2 text-lg font-medium">Drag and drop CSV file here</p>
-            <p className="mb-4 text-sm text-muted-foreground">or</p>
-            <label htmlFor="file-upload">
-              <Button variant="secondary" type="button" onClick={() => document.getElementById('file-upload')?.click()}>
-                Browse Files
-              </Button>
-              <input id="file-upload" type="file" accept=".csv" onChange={handleFileInputChange} className="hidden" />
-            </label>
+            {/* Main drop zone area */}
+            <div className="flex cursor-pointer flex-col items-center justify-center p-8">
+              <Upload className="mb-3 h-10 w-10 text-muted-foreground" />
+              <p className="mb-1 text-base font-medium">Drag and drop CSV file here</p>
+              <p className="mb-3 text-sm text-muted-foreground">or</p>
+              <label htmlFor="file-upload">
+                <Button variant="secondary" type="button" onClick={() => document.getElementById("file-upload")?.click()}>
+                  Browse Files
+                </Button>
+                <input id="file-upload" type="file" accept=".csv" onChange={handleFileInputChange} className="hidden" />
+              </label>
+            </div>
+
+            {/* CSV Format Info as footer */}
+            <div className="border-t bg-muted/30 px-6 py-3">
+              <div className="flex items-start gap-6">
+                <div className="flex-1">
+                  <p className="mb-1.5 text-xs font-semibold text-foreground">Required:</p>
+                  <p className="text-xs text-muted-foreground">
+                    <strong>UPN</strong> or <strong>Username</strong>
+                  </p>
+                </div>
+                <div className="flex-[2]">
+                  <p className="mb-1.5 text-xs font-semibold text-foreground">Optional:</p>
+                  <p className="text-xs text-muted-foreground">
+                    <strong>FullName</strong>, <strong>Email</strong>, <strong>CardID</strong>, <strong>PIN</strong>, <strong>OTP</strong>,{" "}
+                    <strong>ProviderID</strong>
+                  </p>
+                </div>
+                <div className="flex-shrink-0">
+                  <p className="text-xs text-muted-foreground/70">Delimiter auto-detected</p>
+                </div>
+              </div>
+            </div>
           </div>
 
           {parseErrors.length > 0 && (
@@ -210,7 +233,7 @@ function ImportPage() {
           <CardDescription>Configure import options and upload users to SafeQ Cloud</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-wrap items-center gap-4">
+          <div className="flex flex-wrap items-center gap-4 mb-4">
             <div className="flex items-center gap-2">
               <Label className="text-sm font-medium">Default Provider:</Label>
               <select
@@ -259,39 +282,6 @@ function ImportPage() {
           <div className="mt-4">
             <ImportGrid users={users} onUpdate={setUsers} />
           </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>CSV Format</CardTitle>
-          <CardDescription>Your CSV file should include the following columns</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <p className="mb-3 text-sm text-muted-foreground">Delimiter will be auto-detected. Supported columns:</p>
-          <ul className="space-y-2 text-sm text-muted-foreground">
-            <li>
-              <strong>UPN</strong> or <strong>Username</strong> (required)
-            </li>
-            <li>
-              <strong>FullName</strong> (optional)
-            </li>
-            <li>
-              <strong>EmailAddress</strong> or <strong>Email</strong> (optional)
-            </li>
-            <li>
-              <strong>CardID</strong> (optional)
-            </li>
-            <li>
-              <strong>ShortID</strong> or <strong>PIN</strong> (optional - numeric code, detailtype=5)
-            </li>
-            <li>
-              <strong>OTP</strong> (optional - alphanumeric code, detailtype=10)
-            </li>
-            <li>
-              <strong>PID</strong> or <strong>ProviderID</strong> (optional - authentication provider ID, or use dropdown above)
-            </li>
-          </ul>
         </CardContent>
       </Card>
     </div>
