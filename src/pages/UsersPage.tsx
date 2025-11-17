@@ -11,7 +11,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import UserFilters, { type FilterOptions, type SortField, type SortDirection } from "../components/UserFilters";
 import BulkActionsBar from "../components/BulkActionsBar";
-import { RefreshCw, AlertCircle, CheckCircle2 } from "lucide-react";
+import MessageBox from "../components/MessageBox";
+import { RefreshCw } from "lucide-react";
 
 interface ProviderData {
   provider: SafeQAuthProvider;
@@ -35,6 +36,15 @@ function UsersPage() {
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
   const [isBulkProcessing, setIsBulkProcessing] = useState(false);
   const [bulkMessage, setBulkMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
+  // Auto-dismiss bulk message after 5 seconds
+  useEffect(() => {
+    if (bulkMessage) {
+      const timer = setTimeout(() => setBulkMessage(null), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [bulkMessage]);
+
   const [resultsDialog, setResultsDialog] = useState<{
     open: boolean;
     type: CredentialType;
@@ -367,25 +377,9 @@ function UsersPage() {
           )}
         </CardHeader>
         <CardContent>
-          {providersError && (
-            <div className="mb-4 flex items-center gap-2 rounded-md border border-red-200 bg-red-50 p-4 text-red-900 dark:border-red-900 dark:bg-red-950 dark:text-red-100">
-              <AlertCircle className="h-5 w-5" />
-              <span>{providersError}</span>
-            </div>
-          )}
+          {providersError && <MessageBox type="error" message={providersError} onDismiss={() => setProvidersError(null)} className="mb-4" />}
 
-          {bulkMessage && (
-            <div
-              className={`mb-4 flex items-center gap-2 rounded-md border p-4 ${
-                bulkMessage.type === "success"
-                  ? "border-green-200 bg-green-50 text-green-900 dark:border-green-900 dark:bg-green-950 dark:text-green-100"
-                  : "border-red-200 bg-red-50 text-red-900 dark:border-red-900 dark:bg-red-950 dark:text-red-100"
-              }`}
-            >
-              {bulkMessage.type === "success" ? <CheckCircle2 className="h-5 w-5" /> : <AlertCircle className="h-5 w-5" />}
-              <span>{bulkMessage.text}</span>
-            </div>
-          )}
+          {bulkMessage && <MessageBox type={bulkMessage.type} message={bulkMessage.text} onDismiss={() => setBulkMessage(null)} className="mb-4" />}
 
           {!providersError && !isLoadingProviders && providers.length === 0 && (
             <p className="text-sm text-muted-foreground">No authentication providers found. Make sure your settings are configured correctly.</p>

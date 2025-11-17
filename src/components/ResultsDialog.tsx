@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import type { SafeQUser } from "../types/safeq";
 import { sendCredentialEmails, type CredentialType } from "../services/emailDelivery";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { CheckCircle2, XCircle, Mail, Download, Loader2 } from "lucide-react";
+import MessageBox from "./MessageBox";
 import { save } from "@tauri-apps/plugin-dialog";
 import { writeTextFile } from "@tauri-apps/plugin-fs";
 
@@ -31,9 +32,34 @@ function ResultsDialog({ open, onClose, type, results }: ResultsDialogProps) {
   const failedCount = results.filter((r) => !r.success).length;
   const label = type === "pin" ? "PIN" : "OTP";
 
+  // Auto-dismiss messages after 5 seconds
+  useEffect(() => {
+    if (emailResults) {
+      const timer = setTimeout(() => setEmailResults(null), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [emailResults]);
+
+  useEffect(() => {
+    if (downloadStatus) {
+      const timer = setTimeout(() => setDownloadStatus(null), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [downloadStatus]);
+
+  // Reset messages when dialog closes
+  useEffect(() => {
+    if (!open) {
+      setEmailResults(null);
+      setDownloadStatus(null);
+      setSendingEmails(false);
+    }
+  }, [open]);
+
   const handleSendEmails = async () => {
     setSendingEmails(true);
     setEmailResults(null);
+    setDownloadStatus(null);
 
     try {
       const successfulResults = results.filter((r) => r.success && r.user.email);
@@ -58,6 +84,7 @@ function ResultsDialog({ open, onClose, type, results }: ResultsDialogProps) {
 
   const handleDownloadCSV = async () => {
     setDownloadStatus(null);
+    setEmailResults(null);
     const headers = ["Username", "Full Name", "Email", label, "Status", "Error"];
     const rows = results.map((result) => [
       result.user.userName || "",
@@ -102,40 +129,18 @@ function ResultsDialog({ open, onClose, type, results }: ResultsDialogProps) {
 
         <div className="flex-1 overflow-auto">
           {downloadStatus && (
-            <div
-              className={`mb-4 flex items-center gap-2 rounded-md border p-4 ${
-                downloadStatus.type === "success"
-                  ? "border-green-200 bg-green-50 text-green-900 dark:border-green-900 dark:bg-green-950 dark:text-green-100"
-                  : "border-red-200 bg-red-50 text-red-900 dark:border-red-900 dark:bg-red-950 dark:text-red-100"
-              }`}
-            >
-              {downloadStatus.type === "success" ? <CheckCircle2 className="h-5 w-5" /> : <XCircle className="h-5 w-5" />}
-              <div className="flex-1">
-                <p className="text-sm">{downloadStatus.message}</p>
-              </div>
-            </div>
+            <MessageBox type={downloadStatus.type} message={downloadStatus.message} onDismiss={() => setDownloadStatus(null)} className="mb-4" />
           )}
 
           {emailResults && (
-            <div
-              className={`mb-4 flex items-center gap-2 rounded-md border p-4 ${
-                emailResults.failed === 0
-                  ? "border-green-200 bg-green-50 text-green-900 dark:border-green-900 dark:bg-green-950 dark:text-green-100"
-                  : "border-yellow-200 bg-yellow-50 text-yellow-900 dark:border-yellow-900 dark:bg-yellow-950 dark:text-yellow-100"
+            <MessageBox
+              type={emailResults.failed === 0 ? "success" : "warning"}
+              message={`Sent emails to ${emailResults.success} user${emailResults.success !== 1 ? "s" : ""}${
+                emailResults.failed > 0 ? `. Failed: ${emailResults.failed}. ${emailResults.errors.slice(0, 2).join("; ")}` : ""
               }`}
-            >
-              {emailResults.failed === 0 ? <CheckCircle2 className="h-5 w-5" /> : <XCircle className="h-5 w-5" />}
-              <div className="flex-1">
-                <p>
-                  Sent emails to {emailResults.success} user{emailResults.success !== 1 ? "s" : ""}
-                </p>
-                {emailResults.failed > 0 && (
-                  <p className="text-sm mt-1">
-                    Failed: {emailResults.failed}. {emailResults.errors.slice(0, 2).join("; ")}
-                  </p>
-                )}
-              </div>
-            </div>
+              onDismiss={() => setEmailResults(null)}
+              className="mb-4"
+            />
           )}
 
           <div className="border rounded-md">

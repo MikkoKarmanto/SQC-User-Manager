@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import type { SafeQUser } from "../types/safeq";
 import { updateUserCard, updateUserPin, updateUserShortId, generateUserPin, generateUserOtp } from "../services/safeqClient";
 import { sendCredentialEmails, type CredentialType } from "../services/emailDelivery";
@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, Trash2, Plus, Mail } from "lucide-react";
+import MessageBox from "./MessageBox";
 
 interface EditUserModalProps {
   user: SafeQUser | null;
@@ -23,6 +24,29 @@ function EditUserModal({ user, onClose, onSuccess }: EditUserModalProps) {
   const [generatedOtp, setGeneratedOtp] = useState<string | null>(null);
   const [generatedPin, setGeneratedPin] = useState<string | null>(null);
   const [sendingEmail, setSendingEmail] = useState<CredentialType | null>(null);
+
+  // Auto-dismiss messages after 5 seconds
+  useEffect(() => {
+    if (error || successMessage) {
+      const timer = setTimeout(() => {
+        setError(null);
+        setSuccessMessage(null);
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [error, successMessage]);
+
+  // Reset messages and state when modal closes
+  useEffect(() => {
+    if (!user) {
+      setError(null);
+      setSuccessMessage(null);
+      setGeneratedOtp(null);
+      setGeneratedPin(null);
+      setSendingEmail(null);
+      setNewCard("");
+    }
+  }, [user]);
 
   if (!user) {
     return null;
@@ -186,16 +210,8 @@ function EditUserModal({ user, onClose, onSuccess }: EditUserModalProps) {
         </DialogHeader>
 
         <div className="flex-1 overflow-auto space-y-6">
-          {error && (
-            <div className="rounded-md border border-red-200 bg-red-50 p-4 text-red-900 dark:border-red-900 dark:bg-red-950 dark:text-red-100">
-              {error}
-            </div>
-          )}
-          {successMessage && (
-            <div className="rounded-md border border-green-200 bg-green-50 p-4 text-green-900 dark:border-green-900 dark:bg-green-950 dark:text-green-100">
-              {successMessage}
-            </div>
-          )}
+          {error && <MessageBox type="error" message={error} onDismiss={() => setError(null)} />}
+          {successMessage && <MessageBox type="success" message={successMessage} onDismiss={() => setSuccessMessage(null)} />}
 
           {/* User Information */}
           <Card>
