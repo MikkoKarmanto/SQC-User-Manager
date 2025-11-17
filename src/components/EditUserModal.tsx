@@ -228,31 +228,40 @@ function EditUserModal({ user, onClose, onSuccess }: EditUserModalProps) {
               <CardTitle className="text-base">User Information</CardTitle>
             </CardHeader>
             <CardContent className="grid grid-cols-3 gap-3 text-sm">
-              <div>
+              <div className="min-w-0">
                 <p className="text-xs font-medium text-muted-foreground mb-1">Username</p>
-                <p className="font-mono">{user.userName || "—"}</p>
+                {user.userName && user.userName.includes("@") ? (
+                  <div className="font-mono break-all overflow-hidden">
+                    <div>{user.userName.split("@")[0]}</div>
+                    <div className="text-xs text-muted-foreground">@{user.userName.split("@")[1]}</div>
+                  </div>
+                ) : (
+                  <p className="font-mono break-all overflow-hidden">{user.userName || "—"}</p>
+                )}
               </div>
-              <div>
+              <div className="min-w-0">
                 <p className="text-xs font-medium text-muted-foreground mb-1">Full Name</p>
-                <p>{user.fullName || "—"}</p>
+                <p className="break-words overflow-hidden">{user.fullName || "—"}</p>
               </div>
-              <div>
+              <div className="min-w-0">
                 <p className="text-xs font-medium text-muted-foreground mb-1">Email</p>
-                <p className="font-mono">{user.email || "—"}</p>
+                <p className="font-mono break-all overflow-hidden">{user.email || "—"}</p>
               </div>
-              <div>
+              <div className="min-w-0">
                 <p className="text-xs font-medium text-muted-foreground mb-1">Department</p>
-                <p>{user.department || "—"}</p>
+                <p className="break-words overflow-hidden">{user.department || "—"}</p>
               </div>
-              <div>
+              <div className="min-w-0">
                 <p className="text-xs font-medium text-muted-foreground mb-1">Status</p>
                 <Badge variant={user.isExpired === false ? "default" : "secondary"}>
                   {user.isExpired === false ? "Active" : user.isExpired === true ? "Expired" : "Active"}
                 </Badge>
               </div>
-              <div>
+              <div className="min-w-0">
                 <p className="text-xs font-medium text-muted-foreground mb-1">Groups</p>
-                <p>{user.groupIds && user.groupIds.length > 0 ? `${user.groupIds.length} group${user.groupIds.length !== 1 ? "s" : ""}` : "—"}</p>
+                <p className="overflow-hidden">
+                  {user.groupIds && user.groupIds.length > 0 ? `${user.groupIds.length} group${user.groupIds.length !== 1 ? "s" : ""}` : "—"}
+                </p>
               </div>
             </CardContent>
           </Card>
@@ -349,7 +358,7 @@ function EditUserModal({ user, onClose, onSuccess }: EditUserModalProps) {
                     isSubmitting && !sendingEmail ? "animate-pulse opacity-50" : ""
                   } ${generatedOtp ? "animate-fade-in" : ""}`}
                 >
-                  {generatedOtp || "Not generated"}
+                  {generatedOtp}
                 </span>
                 <div className="flex gap-2">
                   {generatedOtp && user.email && (
