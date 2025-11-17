@@ -209,10 +209,19 @@ function EditUserModal({ user, onClose, onSuccess }: EditUserModalProps) {
           <DialogTitle>User Details</DialogTitle>
         </DialogHeader>
 
-        <div className="flex-1 overflow-auto space-y-4">
-          {error && <MessageBox type="error" message={error} onDismiss={() => setError(null)} />}
-          {successMessage && <MessageBox type="success" message={successMessage} onDismiss={() => setSuccessMessage(null)} />}
+        {/* Fixed position message bars */}
+        {error && (
+          <div className="absolute top-16 left-4 right-4 z-50">
+            <MessageBox type="error" message={error} onDismiss={() => setError(null)} />
+          </div>
+        )}
+        {successMessage && (
+          <div className="absolute top-16 left-4 right-4 z-50">
+            <MessageBox type="success" message={successMessage} onDismiss={() => setSuccessMessage(null)} />
+          </div>
+        )}
 
+        <div className="flex-1 overflow-auto space-y-4">
           {/* User Information */}
           <Card>
             <CardHeader className="pb-3">
