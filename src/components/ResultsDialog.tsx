@@ -13,6 +13,8 @@ interface ResultItem {
   user: SafeQUser;
   success: boolean;
   value?: string;
+  pin?: string;
+  otp?: string;
   error?: string;
 }
 
@@ -21,16 +23,18 @@ interface ResultsDialogProps {
   onClose: () => void;
   type: CredentialType;
   results: ResultItem[];
+  mode?: "credential" | "import";
+  selectedUsers?: SafeQUser[];
 }
 
-function ResultsDialog({ open, onClose, type, results }: ResultsDialogProps) {
+function ResultsDialog({ open, onClose, type, results, mode = "credential" }: ResultsDialogProps) {
   const [sendingEmails, setSendingEmails] = useState(false);
   const [emailResults, setEmailResults] = useState<{ success: number; failed: number; errors: string[] } | null>(null);
   const [downloadStatus, setDownloadStatus] = useState<{ type: "success" | "error"; message: string } | null>(null);
 
   const successCount = results.filter((r) => r.success).length;
   const failedCount = results.filter((r) => !r.success).length;
-  const label = type === "pin" ? "PIN" : "OTP";
+  const label = mode === "import" ? "User" : type === "pin" ? "PIN" : "OTP";
 
   // Auto-dismiss messages after 5 seconds
   useEffect(() => {
@@ -65,12 +69,47 @@ function ResultsDialog({ open, onClose, type, results }: ResultsDialogProps) {
       const successfulResults = results.filter((r) => r.success && r.user.email);
       const requests = successfulResults.map((result) => ({
         user: result.user,
-        pinOverride: type === "pin" ? result.value ?? null : undefined,
-        otpOverride: type === "otp" ? result.value ?? null : undefined,
+        pinOverride: result.pin ?? (type === "pin" ? result.value ?? null : undefined),
+        otpOverride: result.otp ?? (type === "otp" ? result.value ?? null : undefined),
       }));
 
-      const result = await sendCredentialEmails(requests, type);
-      setEmailResults(result);
+      // Determine which credential types to send
+      const hasPins = results.some((r) => r.pin !== undefined);
+      const hasOtps = results.some((r) => r.otp !== undefined);
+
+      let totalSuccess = 0;
+      let totalFailed = 0;
+      let allErrors: string[] = [];
+
+      // Send PIN emails if PINs are present
+      if (hasPins) {
+        const pinResult = await sendCredentialEmails(requests, "pin");
+        totalSuccess += pinResult.success;
+        totalFailed += pinResult.failed;
+        allErrors = [...allErrors, ...pinResult.errors];
+      }
+
+      // Send OTP emails if OTPs are present
+      if (hasOtps) {
+        const otpResult = await sendCredentialEmails(requests, "otp");
+        totalSuccess += otpResult.success;
+        totalFailed += otpResult.failed;
+        allErrors = [...allErrors, ...otpResult.errors];
+      }
+
+      // If neither, fall back to the original type
+      if (!hasPins && !hasOtps) {
+        const result = await sendCredentialEmails(requests, type);
+        totalSuccess = result.success;
+        totalFailed = result.failed;
+        allErrors = result.errors;
+      }
+
+      setEmailResults({
+        success: totalSuccess,
+        failed: totalFailed,
+        errors: allErrors,
+      });
     } catch (err) {
       setEmailResults({
         success: 0,
@@ -85,15 +124,26 @@ function ResultsDialog({ open, onClose, type, results }: ResultsDialogProps) {
   const handleDownloadCSV = async () => {
     setDownloadStatus(null);
     setEmailResults(null);
-    const headers = ["Username", "Full Name", "Email", label, "Status", "Error"];
-    const rows = results.map((result) => [
-      result.user.userName || "",
-      result.user.fullName || "",
-      result.user.email || "",
-      result.value || "",
-      result.success ? "Success" : "Failed",
-      result.error || "",
-    ]);
+
+    // Determine which credential columns to include
+    const hasPins = results.some((r) => r.pin !== undefined);
+    const hasOtps = results.some((r) => r.otp !== undefined);
+    const hasValues = results.some((r) => r.value !== undefined);
+
+    const headers = ["Username", "Full Name", "Email"];
+    if (hasPins) headers.push("PIN");
+    if (hasOtps) headers.push("OTP");
+    if (hasValues && !hasPins && !hasOtps) headers.push(label);
+    headers.push("Status", "Error");
+
+    const rows = results.map((result) => {
+      const row = [result.user.userName || "", result.user.fullName || "", result.user.email || ""];
+      if (hasPins) row.push(result.pin || "");
+      if (hasOtps) row.push(result.otp || "");
+      if (hasValues && !hasPins && !hasOtps) row.push(result.value || "");
+      row.push(result.success ? "Success" : "Failed", result.error || "");
+      return row;
+    });
 
     const csvContent = [headers, ...rows].map((row) => row.map((cell) => `"${cell}"`).join(",")).join("\n");
 
@@ -151,7 +201,11 @@ function ResultsDialog({ open, onClose, type, results }: ResultsDialogProps) {
                   <TableHead>Username</TableHead>
                   <TableHead>Full Name</TableHead>
                   <TableHead>Email</TableHead>
-                  <TableHead className="w-32">{label}</TableHead>
+                  {results.some((r) => r.pin !== undefined) && <TableHead className="w-32">PIN</TableHead>}
+                  {results.some((r) => r.otp !== undefined) && <TableHead className="w-32">OTP</TableHead>}
+                  {results.some((r) => r.value !== undefined) &&
+                    !results.some((r) => r.pin !== undefined) &&
+                    !results.some((r) => r.otp !== undefined) && <TableHead className="w-32">{label}</TableHead>}
                   <TableHead>Error</TableHead>
                 </TableRow>
               </TableHeader>
@@ -164,7 +218,11 @@ function ResultsDialog({ open, onClose, type, results }: ResultsDialogProps) {
                     <TableCell className="font-mono text-sm">{result.user.userName}</TableCell>
                     <TableCell>{result.user.fullName || "—"}</TableCell>
                     <TableCell className="font-mono text-sm">{result.user.email || "—"}</TableCell>
-                    <TableCell className="font-mono font-semibold">{result.value || "—"}</TableCell>
+                    {results.some((r) => r.pin !== undefined) && <TableCell className="font-mono font-semibold">{result.pin || "—"}</TableCell>}
+                    {results.some((r) => r.otp !== undefined) && <TableCell className="font-mono font-semibold">{result.otp || "—"}</TableCell>}
+                    {results.some((r) => r.value !== undefined) &&
+                      !results.some((r) => r.pin !== undefined) &&
+                      !results.some((r) => r.otp !== undefined) && <TableCell className="font-mono font-semibold">{result.value || "—"}</TableCell>}
                     <TableCell className="text-sm text-red-600">{result.error || ""}</TableCell>
                   </TableRow>
                 ))}

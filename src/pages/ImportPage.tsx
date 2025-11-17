@@ -1,12 +1,14 @@
 import { useState, useCallback, useEffect } from "react";
-import type { ImportUser, SafeQAuthProvider } from "../types/safeq";
+import type { ImportUser, SafeQAuthProvider, SafeQUser } from "../types/safeq";
 import { parseCsv, readFileAsText } from "../utils/csvParser";
 import ImportGrid from "../components/ImportGrid";
+import ResultsDialog from "../components/ResultsDialog";
 import { createUsers, listAuthProviders } from "../services/safeqClient";
+import { type CredentialType } from "../services/emailDelivery";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Upload, X, AlertCircle, CheckCircle2, AlertTriangle } from "lucide-react";
+import { Upload, X, AlertCircle, AlertTriangle } from "lucide-react";
 
 function ImportPage() {
   const [users, setUsers] = useState<ImportUser[]>([]);
@@ -14,11 +16,21 @@ function ImportPage() {
   const [parseWarnings, setParseWarnings] = useState<string[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
-  const [uploadStatus, setUploadStatus] = useState<{ success: number; failed: number } | null>(null);
   const [providers, setProviders] = useState<SafeQAuthProvider[]>([]);
   const [selectedProviderId, setSelectedProviderId] = useState<number | null>(null);
   const [autoGeneratePin, setAutoGeneratePin] = useState(false);
   const [autoGenerateOtp, setAutoGenerateOtp] = useState(false);
+  const [resultsDialog, setResultsDialog] = useState<{
+    open: boolean;
+    type: CredentialType;
+    results: Array<{ user: SafeQUser; success: boolean; error?: string; pin?: string; otp?: string }>;
+    selectedUsers: SafeQUser[];
+  }>({
+    open: false,
+    type: "pin",
+    results: [],
+    selectedUsers: [],
+  });
 
   useEffect(() => {
     const fetchProviders = async () => {
@@ -49,7 +61,6 @@ function ImportPage() {
       setUsers(result.users);
       setParseErrors(result.errors);
       setParseWarnings(result.warnings);
-      setUploadStatus(null);
     } catch (error) {
       setParseErrors([`Failed to read file: ${error instanceof Error ? error.message : "Unknown error"}`]);
     }
@@ -99,11 +110,36 @@ function ImportPage() {
     }));
 
     setIsUploading(true);
-    setUploadStatus(null);
 
     try {
       const result = await createUsers(usersWithProvider, autoGeneratePin, autoGenerateOtp);
-      setUploadStatus(result);
+
+      // Determine the credential type based on what was generated
+      const credentialType: CredentialType = autoGeneratePin ? "pin" : autoGenerateOtp ? "otp" : "pin";
+
+      // Show results dialog with detailed user information
+      const dialogResults = result.results.map((item) => ({
+        user: item.user as SafeQUser,
+        success: item.success,
+        error: item.error,
+        pin: item.pin,
+        otp: item.otp,
+      }));
+
+      setResultsDialog({
+        open: true,
+        type: credentialType,
+        results: dialogResults,
+        selectedUsers: validUsers.map((u) => ({
+          id: 0, // Import users don't have IDs yet
+          userName: u.userName,
+          fullName: u.fullName,
+          email: u.email,
+          shortId: u.shortId,
+          otp: u.otp,
+          providerId: u.providerId ?? selectedProviderId ?? undefined,
+        })),
+      });
 
       if (result.failed === 0) {
         // Clear successful users
@@ -124,7 +160,6 @@ function ImportPage() {
     setUsers([]);
     setParseErrors([]);
     setParseWarnings([]);
-    setUploadStatus(null);
   };
 
   const validCount = users.filter((u) => u.isValid).length;
@@ -209,21 +244,6 @@ function ImportPage() {
               </div>
             </div>
           )}
-
-          {uploadStatus && (
-            <div
-              className={`mt-4 flex items-center gap-2 rounded-md border p-4 ${
-                uploadStatus.failed === 0
-                  ? "border-green-200 bg-green-50 text-green-900 dark:border-green-900 dark:bg-green-950 dark:text-green-100"
-                  : "border-yellow-200 bg-yellow-50 text-yellow-900 dark:border-yellow-900 dark:bg-yellow-950 dark:text-yellow-100"
-              }`}
-            >
-              {uploadStatus.failed === 0 ? <CheckCircle2 className="h-5 w-5" /> : <AlertTriangle className="h-5 w-5" />}
-              <span>
-                Upload complete: {uploadStatus.success} succeeded, {uploadStatus.failed} failed
-              </span>
-            </div>
-          )}
         </CardContent>
       </Card>
 
@@ -284,6 +304,14 @@ function ImportPage() {
           </div>
         </CardContent>
       </Card>
+
+      <ResultsDialog
+        open={resultsDialog.open}
+        onClose={() => setResultsDialog({ open: false, type: "pin", results: [], selectedUsers: [] })}
+        type={resultsDialog.type}
+        results={resultsDialog.results}
+        selectedUsers={resultsDialog.selectedUsers}
+      />
     </div>
   );
 }

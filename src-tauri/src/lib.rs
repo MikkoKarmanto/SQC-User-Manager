@@ -247,6 +247,7 @@ async fn create_users(
 
     let mut success_count = 0;
     let mut failed_count = 0;
+    let mut results: Vec<serde_json::Value> = Vec::new();
 
     for user in users {
         let username = user["userName"].as_str().unwrap_or("");
@@ -279,14 +280,46 @@ async fn create_users(
             )
             .await
         {
-            Ok(_) => success_count += 1,
-            Err(_) => failed_count += 1,
+            Ok(_) => {
+                success_count += 1;
+                let mut result_json = serde_json::json!({
+                    "user": {
+                        "userName": username,
+                        "fullName": full_name,
+                        "email": email,
+                        "providerId": provider_id,
+                    },
+                    "success": true,
+                });
+                // Include generated credentials in the result
+                if let Some(pin_value) = &short_id {
+                    result_json["pin"] = serde_json::json!(pin_value);
+                }
+                if let Some(otp_value) = &otp {
+                    result_json["otp"] = serde_json::json!(otp_value);
+                }
+                results.push(result_json);
+            }
+            Err(err) => {
+                failed_count += 1;
+                results.push(serde_json::json!({
+                    "user": {
+                        "userName": username,
+                        "fullName": full_name,
+                        "email": email,
+                        "providerId": provider_id,
+                    },
+                    "success": false,
+                    "error": err.to_string(),
+                }));
+            }
         }
     }
 
     Ok(serde_json::json!({
         "success": success_count,
-        "failed": failed_count
+        "failed": failed_count,
+        "results": results,
     }))
 }
 
