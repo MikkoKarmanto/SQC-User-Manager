@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import UserFilters, { type FilterOptions, type SortField, type SortDirection } from "../components/UserFilters";
 import BulkActionsBar from "../components/BulkActionsBar";
 import MessageBox from "../components/MessageBox";
-import { RefreshCw } from "lucide-react";
+import { RefreshCw, AlertCircle } from "lucide-react";
 
 interface ProviderData {
   provider: SafeQAuthProvider;
@@ -224,7 +224,7 @@ function UsersPage() {
       // Map backend results to dialog format with full user data
       const dialogResults = result.results.map((item) => {
         // Find the full user object from selectedUsers
-        const fullUser = selectedUsers.find((u) => u.userName === item.user.userName);
+        const fullUser = selectedUsers.find((u) => u.userName === (item.user as SafeQUser).userName);
         return {
           user: fullUser || (item.user as SafeQUser),
           success: item.success,
@@ -283,7 +283,7 @@ function UsersPage() {
       // Map backend results to dialog format with full user data
       const dialogResults = result.results.map((item) => {
         // Find the full user object from selectedUsers
-        const fullUser = selectedUsers.find((u) => u.userName === item.user.userName);
+        const fullUser = selectedUsers.find((u) => u.userName === (item.user as SafeQUser).userName);
         return {
           user: fullUser || (item.user as SafeQUser),
           success: item.success,
