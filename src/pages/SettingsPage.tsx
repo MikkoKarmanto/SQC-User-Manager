@@ -153,6 +153,28 @@ function SettingsPage() {
     emailSettings,
   ]);
 
+  const handleUndo = () => {
+    if (!initialSettings) {
+      return;
+    }
+    setTenantUrl(initialSettings.tenantUrl);
+    setApiKey(initialSettings.apiKey);
+    setPinLength(initialSettings.pinLength ?? 4);
+    setOtpLength(initialSettings.otpLength ?? 8);
+    setOtpUseUppercase(initialSettings.otpUseUppercase ?? true);
+    setOtpUseLowercase(initialSettings.otpUseLowercase ?? true);
+    setOtpUseNumbers(initialSettings.otpUseNumbers ?? true);
+    setOtpUseSpecial(initialSettings.otpUseSpecial ?? false);
+    setOtpExcludeCharacters(initialSettings.otpExcludeCharacters ?? "1lI0Oo");
+    setShortIdLength(initialSettings.shortIdLength ?? 6);
+    setShortIdUseUppercase(initialSettings.shortIdUseUppercase ?? true);
+    setShortIdUseLowercase(initialSettings.shortIdUseLowercase ?? true);
+    setShortIdUseNumbers(initialSettings.shortIdUseNumbers ?? true);
+    setShortIdUseSpecial(initialSettings.shortIdUseSpecial ?? false);
+    setEmailSettings(cloneEmailSettings(initialSettings.emailSettings ?? getDefaultEmailSettings()));
+    setNotice(null);
+  };
+
   const onSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setNotice(null);
@@ -249,13 +271,13 @@ function SettingsPage() {
 
             <div className="space-y-2">
               <Label htmlFor="api-key">API Key</Label>
-              <Textarea
+              <Input
                 id="api-key"
+                type="text"
                 placeholder="Paste an API key with user management scopes"
                 value={apiKey}
                 onChange={(event) => setApiKey(event.currentTarget.value)}
                 disabled={isLoading || isSaving}
-                className="min-h-[100px]"
               />
               <p className="text-sm text-muted-foreground">The key is stored locally and sent only when invoking SAFEQ Cloud API requests.</p>
             </div>
@@ -321,7 +343,7 @@ function SettingsPage() {
                   value={emailSettings.graphSenderAddress ?? ""}
                   onChange={(value) => handleEmailSettingChange("graphSenderAddress", value)}
                   disabled={isLoading || isSaving}
-                  placeholder="printer-notify@contoso.com"
+                  placeholder="no-reply@contoso.com"
                   helperText="Must match a mailbox the app registration can send from"
                 />
               </div>
@@ -446,13 +468,31 @@ function SettingsPage() {
             </div>
           </CardContent>
         </Card>
+      </form>
 
-        <div className="flex justify-end gap-4">
-          <Button type="submit" disabled={!hasChanges || isSaving || isLoading}>
+      {/* Floating Action Buttons */}
+      {hasChanges && (
+        <div className="fixed bottom-6 right-6 flex gap-3 z-50">
+          <Button type="button" variant="outline" size="lg" onClick={handleUndo} disabled={isSaving} className="shadow-lg">
+            Undo Changes
+          </Button>
+          <Button
+            type="button"
+            size="lg"
+            onClick={() => {
+              const form = document.querySelector("form");
+              if (form) {
+                const event = new Event("submit", { bubbles: true, cancelable: true });
+                form.dispatchEvent(event);
+              }
+            }}
+            disabled={isSaving || isLoading}
+            className="shadow-lg"
+          >
             {isSaving ? "Saving…" : "Save Settings"}
           </Button>
         </div>
-      </form>
+      )}
 
       {notice && (
         <div
@@ -661,6 +701,10 @@ function TemplateEditor({ title, template, onChange, disabled, onReset }: Templa
           />
           <p className="text-sm text-muted-foreground">
             Available tokens: <code>{"{{userName}}"}</code>, <code>{"{{fullName}}"}</code>, <code>{"{{pin}}"}</code>, <code>{"{{otp}}"}</code>
+          </p>
+          <p className="text-sm text-muted-foreground">
+            <strong>HTML Support:</strong> When using Microsoft Graph, you can use HTML tags in the body for rich formatting (e.g.,{" "}
+            <code>&lt;p&gt;</code>, <code>&lt;strong&gt;</code>, <code>&lt;br&gt;</code>). Desktop email clients will receive plain text.
           </p>
         </div>
       </div>

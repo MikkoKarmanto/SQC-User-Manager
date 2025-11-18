@@ -36,29 +36,124 @@ export type SafeQSettings = {
 };
 
 export const DEFAULT_PIN_TEMPLATE: EmailTemplate = {
-  subject: "Your SAFEQ PIN",
-  body: [
-    "Hello {{fullName || userName}},",
-    "",
-    "Your new SAFEQ PIN is {{pin}}.",
-    "Use this code to access printers that require a numeric PIN.",
-    "",
-    "Thanks,",
-    "SAFEQ Cloud Administrator",
-  ].join("\n"),
+  subject: "SAFEQ Cloud PIN",
+  body: `<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>SAFEQ Cloud PIN</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            color: #333333;
+            background-color: #f9f9f9;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 600px;
+            margin: 20px auto;
+            background-color: #ffffff;
+            border: 1px solid #dddddd;
+            border-radius: 6px;
+            padding: 20px;
+        }
+        h2 {
+            color: #2c3e50;
+        }
+        .pin {
+            font-size: 24px;
+            font-weight: bold;
+            color: #0078d4;
+            margin: 15px 0;
+        }
+        p {
+            line-height: 1.6;
+        }
+        .footer {
+            margin-top: 20px;
+            font-size: 14px;
+            color: #777777;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Hello {{fullName || userName}},</h2>
+        <p>Your new SAFEQ Cloud PIN is:</p>
+        <div class="pin">{{pin}}</div>
+        <p>
+            Use this code to access printers that require a PIN.
+        </p>
+        <div class="footer">
+            Thanks,<br>
+            SAFEQ Cloud Administrator
+        </div>
+    </div>
+</body>
+</html>`,
 };
 
 export const DEFAULT_OTP_TEMPLATE: EmailTemplate = {
-  subject: "Your SAFEQ OTP",
-  body: [
-    "Hello {{fullName || userName}},",
-    "",
-    "Your one-time password is {{otp}}.",
-    "Enter this code when the portal or device asks for an OTP.",
-    "",
-    "Thanks,",
-    "SAFEQ Cloud Administrator",
-  ].join("\n"),
+  subject: "SAFEQ Cloud OTP",
+  body: `<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>SAFEQ Cloud One-Time Password</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            color: #333333;
+            background-color: #f9f9f9;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 600px;
+            margin: 20px auto;
+            background-color: #ffffff;
+            border: 1px solid #dddddd;
+            border-radius: 6px;
+            padding: 20px;
+        }
+        h2 {
+            color: #2c3e50;
+        }
+        .otp {
+            font-size: 24px;
+            font-weight: bold;
+            color: #0078d4;
+            margin: 15px 0;
+        }
+        p {
+            line-height: 1.6;
+        }
+        .footer {
+            margin-top: 20px;
+            font-size: 14px;
+            color: #777777;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Hello {{fullName || userName}},</h2>
+        <p>Your one-time password is:</p>
+        <div class="otp">{{otp}}</div>
+        <p>
+            You can use this code to register your access card / tag at the MFD.
+        </p>
+        <p>
+            Show your card / tag to the MFD's card reader, then enter your username and this code when prompted.
+        </p>
+        <div class="footer">
+            Thanks,<br>
+            SAFEQ Cloud Administrator
+        </div>
+    </div>
+</body>
+</html>`,
 };
 
 export function getDefaultEmailSettings(): EmailSettings {

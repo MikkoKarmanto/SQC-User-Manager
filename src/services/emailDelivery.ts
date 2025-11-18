@@ -21,10 +21,83 @@ interface DraftEmail {
   to: string;
   subject: string;
   body: string;
+  isHtml?: boolean;
 }
 
 interface PreparedMessage extends DraftEmail {
   contentType: "text" | "html";
+}
+
+/**
+ * Detects if the content contains HTML tags
+ */
+function isHtmlContent(content: string): boolean {
+  // Check for common HTML tags
+  const htmlTagPattern = /<(p|div|br|span|strong|em|h[1-6]|ul|ol|li|table|tr|td|th|a|img|html|body|head)[^>]*>/i;
+  return htmlTagPattern.test(content);
+}
+
+/**
+ * Strips HTML tags and converts to plain text for mailto
+ */
+function stripHtml(html: string): string {
+  // Remove DOCTYPE, comments, and CDATA
+  let text = html.replace(/<!DOCTYPE[^>]*>/gi, "");
+  text = text.replace(/<!--[\s\S]*?-->/g, "");
+  text = text.replace(/<!\[CDATA\[[\s\S]*?\]\]>/g, "");
+
+  // Remove entire <head>, <style>, and <script> sections with their content
+  text = text.replace(/<head[^>]*>[\s\S]*?<\/head>/gi, "");
+  text = text.replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "");
+  text = text.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "");
+
+  // Remove <html>, <body>, and other structural tags
+  text = text.replace(/<\/?html[^>]*>/gi, "");
+  text = text.replace(/<\/?body[^>]*>/gi, "");
+  text = text.replace(/<\/?head[^>]*>/gi, "");
+
+  // Replace heading tags with their content followed by newlines
+  text = text.replace(/<h[1-6][^>]*>(.*?)<\/h[1-6]>/gi, "$1\n\n");
+
+  // Replace <br>, <br/>, <br /> with newlines
+  text = text.replace(/<br\s*\/?>/gi, "\n");
+
+  // Replace </p>, </div>, </li> with double newlines for separation
+  text = text.replace(/<\/(?:p|div|li)>/gi, "\n\n");
+
+  // Replace </tr>, </th>, </td> with newlines for table formatting
+  text = text.replace(/<\/(?:tr|th|td)>/gi, "\n");
+
+  // Remove opening tags for block elements
+  text = text.replace(/<(?:p|div|ul|ol|li|table|tr|td|th)[^>]*>/gi, "");
+
+  // Remove all remaining HTML tags
+  text = text.replace(/<[^>]+>/g, "");
+
+  // Decode common HTML entities
+  text = text.replace(/&nbsp;/g, " ");
+  text = text.replace(/&amp;/g, "&");
+  text = text.replace(/&lt;/g, "<");
+  text = text.replace(/&gt;/g, ">");
+  text = text.replace(/&quot;/g, '"');
+  text = text.replace(/&#39;/g, "'");
+  text = text.replace(/&apos;/g, "'");
+
+  // Clean up excessive whitespace
+  text = text.replace(/[ \t]+/g, " ");
+  text = text.replace(/ *\n */g, "\n");
+  text = text.replace(/\n{3,}/g, "\n\n");
+
+  // Trim leading/trailing whitespace from each line
+  text = text
+    .split("\n")
+    .map((line) => line.trim())
+    .join("\n");
+
+  // Remove empty lines at the start and end
+  text = text.replace(/^\n+/, "").replace(/\n+$/, "");
+
+  return text;
 }
 
 export async function sendCredentialEmails(requests: EmailDeliveryRequest[], type: CredentialType): Promise<EmailDeliveryResult> {
@@ -50,13 +123,14 @@ export async function sendCredentialEmails(requests: EmailDeliveryRequest[], typ
     const tokens = context.tokens;
     const subject = renderTemplate(template.subject, tokens).trim();
     const body = renderTemplate(template.body, tokens).trim();
+    const isHtml = isHtmlContent(body);
 
     if (!subject || !body) {
       templateErrors.push(`${tokens.userName}: template subject or body is empty after rendering.`);
       return;
     }
 
-    drafts.push({ to: tokens.email, subject, body });
+    drafts.push({ to: tokens.email, subject, body, isHtml });
   });
 
   if (drafts.length === 0) {
@@ -72,7 +146,7 @@ export async function sendCredentialEmails(requests: EmailDeliveryRequest[], typ
     const graphResult = await sendGraphEmails(
       drafts.map<PreparedMessage>((draft) => ({
         ...draft,
-        contentType: "text",
+        contentType: draft.isHtml ? "html" : "text",
       }))
     );
 
@@ -154,7 +228,9 @@ async function openMailDrafts(drafts: DraftEmail[]) {
 
   for (let index = 0; index < drafts.length; index += 1) {
     const draft = drafts[index];
-    const mailtoUrl = buildMailtoUrl(draft.to, draft.subject, draft.body);
+    // Strip HTML tags for mailto protocol (doesn't support HTML)
+    const plainBody = draft.isHtml ? stripHtml(draft.body) : draft.body;
+    const mailtoUrl = buildMailtoUrl(draft.to, draft.subject, plainBody);
 
     try {
       await openMailtoUrl(mailtoUrl, index * 150);
