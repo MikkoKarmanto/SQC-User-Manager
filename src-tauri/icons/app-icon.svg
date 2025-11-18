@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <!-- Background with gradient -->
+  <defs>
+    <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#7c3aed;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#a855f7;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Background circle -->
+  <circle cx="256" cy="256" r="256" fill="url(#bgGradient)"/>
+  
+  <!-- Inner circle for depth -->
+  <circle cx="256" cy="256" r="240" fill="none" stroke="#ffffff" stroke-width="2" opacity="0.2"/>
+  
+  <!-- Main Icon - Users/People (scaled up for icon) -->
+  <g transform="translate(140, 170)">
+    <!-- First User -->
+    <circle cx="60" cy="45" r="35" fill="#ffffff" opacity="0.95"/>
+    <path d="M 15 125 Q 15 75 60 75 Q 105 75 105 125 L 15 125" fill="#ffffff" opacity="0.95"/>
+    
+    <!-- Second User -->
+    <circle cx="180" cy="45" r="35" fill="#ffffff" opacity="0.95"/>
+    <path d="M 135 125 Q 135 75 180 75 Q 225 75 225 125 L 135 125" fill="#ffffff" opacity="0.95"/>
+    
+    <!-- Connection Line between users -->
+    <line x1="105" y1="100" x2="135" y2="100" stroke="#ffffff" stroke-width="8" opacity="0.7" stroke-linecap="round"/>
+  </g>
+  
+  <!-- Gear/Settings Icon Overlay (bottom right) -->
+  <g transform="translate(330, 330)">
+    <circle cx="50" cy="50" r="45" fill="#ffffff" opacity="0.3"/>
+    <circle cx="50" cy="50" r="28" fill="none" stroke="#ffffff" stroke-width="6" opacity="0.95"/>
+    <circle cx="50" cy="50" r="12" fill="#ffffff" opacity="0.95"/>
+    <!-- Gear teeth -->
+    <line x1="50" y1="8" x2="50" y2="22" stroke="#ffffff" stroke-width="6" opacity="0.95" stroke-linecap="round"/>
+    <line x1="50" y1="78" x2="50" y2="92" stroke="#ffffff" stroke-width="6" opacity="0.95" stroke-linecap="round"/>
+    <line x1="8" y1="50" x2="22" y2="50" stroke="#ffffff" stroke-width="6" opacity="0.95" stroke-linecap="round"/>
+    <line x1="78" y1="50" x2="92" y2="50" stroke="#ffffff" stroke-width="6" opacity="0.95" stroke-linecap="round"/>
+    <line x1="20" y1="20" x2="30" y2="30" stroke="#ffffff" stroke-width="6" opacity="0.95" stroke-linecap="round"/>
+    <line x1="70" y1="70" x2="80" y2="80" stroke="#ffffff" stroke-width="6" opacity="0.95" stroke-linecap="round"/>
+    <line x1="80" y1="20" x2="70" y2="30" stroke="#ffffff" stroke-width="6" opacity="0.95" stroke-linecap="round"/>
+    <line x1="30" y1="70" x2="20" y2="80" stroke="#ffffff" stroke-width="6" opacity="0.95" stroke-linecap="round"/>
+  </g>
+</svg>

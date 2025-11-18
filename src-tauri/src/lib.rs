@@ -355,21 +355,17 @@ async fn close_splashscreen(app: tauri::AppHandle) -> Result<(), String> {
     } else {
         // Create the main window
         let main_url = if cfg!(dev) {
-            "http://localhost:1420/"
+            tauri::WebviewUrl::External("http://localhost:1420/".parse().unwrap())
         } else {
-            "index.html"
+            tauri::WebviewUrl::App("index.html".into())
         };
 
-        let window = tauri::WebviewWindowBuilder::new(
-            &app,
-            "main",
-            tauri::WebviewUrl::External(main_url.parse().unwrap()),
-        )
-        .title("SAFEQ Cloud User Manager")
-        .inner_size(1200.0, 800.0)
-        .center()
-        .build()
-        .map_err(|e| e.to_string())?;
+        let window = tauri::WebviewWindowBuilder::new(&app, "main", main_url)
+            .title("SAFEQ Cloud User Manager")
+            .inner_size(1200.0, 800.0)
+            .center()
+            .build()
+            .map_err(|e| e.to_string())?;
 
         window.show().map_err(|e| e.to_string())?;
         window
@@ -396,24 +392,20 @@ pub fn run() {
         .setup(|app| {
             // Create the splash screen window first
             let splash_url = if cfg!(dev) {
-                "http://localhost:1420/splash.html"
+                tauri::WebviewUrl::External("http://localhost:1420/splash.html".parse().unwrap())
             } else {
-                "splash.html"
+                tauri::WebviewUrl::App("splash.html".into())
             };
 
-            tauri::WebviewWindowBuilder::new(
-                app,
-                "splashscreen",
-                tauri::WebviewUrl::External(splash_url.parse().unwrap()),
-            )
-            .title("SAFEQ Cloud User Manager")
-            .inner_size(600.0, 400.0)
-            .resizable(false)
-            .decorations(false)
-            .always_on_top(true)
-            .skip_taskbar(true)
-            .center()
-            .build()?;
+            tauri::WebviewWindowBuilder::new(app, "splashscreen", splash_url)
+                .title("SAFEQ Cloud User Manager")
+                .inner_size(600.0, 400.0)
+                .resizable(false)
+                .decorations(false)
+                .always_on_top(true)
+                .skip_taskbar(true)
+                .center()
+                .build()?;
 
             Ok(())
         })
