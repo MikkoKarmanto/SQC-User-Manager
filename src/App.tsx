@@ -12,7 +12,24 @@ function App() {
           <div className="container mx-auto px-6 py-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <img src="/tauri.svg" alt="SAFEQ" className="h-10 w-10" />
+                <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 120 120" className="text-black-600">
+                  <circle cx="60" cy="60" r="58" fill="currentColor" opacity="0.1" />
+                  <g transform="translate(30, 35)">
+                    <circle cx="15" cy="12" r="8" fill="currentColor" opacity="0.8" />
+                    <path d="M 5 32 Q 5 22 15 22 Q 25 22 25 32 L 5 32" fill="currentColor" opacity="0.8" />
+                    <circle cx="45" cy="12" r="8" fill="currentColor" opacity="0.8" />
+                    <path d="M 35 32 Q 35 22 45 22 Q 55 22 55 32 L 35 32" fill="currentColor" opacity="0.8" />
+                    <line x1="25" y1="27" x2="35" y2="27" stroke="currentColor" strokeWidth="2" opacity="0.6" />
+                  </g>
+                  <g transform="translate(75, 75)" opacity="0.7">
+                    <circle cx="12" cy="12" r="6" fill="none" stroke="currentColor" strokeWidth="2" />
+                    <circle cx="12" cy="12" r="3" fill="currentColor" />
+                    <line x1="12" y1="3" x2="12" y2="6" stroke="currentColor" strokeWidth="2" />
+                    <line x1="12" y1="18" x2="12" y2="21" stroke="currentColor" strokeWidth="2" />
+                    <line x1="3" y1="12" x2="6" y2="12" stroke="currentColor" strokeWidth="2" />
+                    <line x1="18" y1="12" x2="21" y2="12" stroke="currentColor" strokeWidth="2" />
+                  </g>
+                </svg>
                 <div>
                   <h1 className="text-xl font-bold tracking-tight">SAFEQ Cloud User Manager</h1>
                   <p className="text-sm text-muted-foreground">Manage tenant users from a single desktop tool</p>
