@@ -38,9 +38,7 @@ function ImportPage() {
         const response = await listAuthProviders();
         const providersList = Array.isArray(response) ? (response as SafeQAuthProvider[]) : [];
         setProviders(providersList);
-        if (providersList.length > 0) {
-          setSelectedProviderId(providersList[0].id);
-        }
+        // Default to None - user must explicitly select a provider
       } catch (error) {
         console.error("Failed to load providers:", error);
       }
@@ -48,23 +46,73 @@ function ImportPage() {
     fetchProviders();
   }, []);
 
-  const handleFileSelect = useCallback(async (file: File) => {
-    if (!file.name.endsWith(".csv")) {
-      setParseErrors(["Please select a CSV file"]);
-      return;
-    }
+  // Re-validate users when default provider changes
+  useEffect(() => {
+    if (users.length === 0) return;
 
-    try {
-      const content = await readFileAsText(file);
-      const result = parseCsv(content);
+    const updatedUsers = users.map((user) => {
+      const hasProviderInRow = user.providerId !== undefined && user.providerId !== null;
+      const hasDefaultProvider = selectedProviderId !== null;
 
-      setUsers(result.users);
-      setParseErrors(result.errors);
-      setParseWarnings(result.warnings);
-    } catch (error) {
-      setParseErrors([`Failed to read file: ${error instanceof Error ? error.message : "Unknown error"}`]);
-    }
-  }, []);
+      // User needs provider either in row or as default
+      const needsProvider = !hasProviderInRow && !hasDefaultProvider;
+
+      if (needsProvider) {
+        return {
+          ...user,
+          errors: [...(user.errors || []).filter((e) => !e.includes("Provider ID")), "Provider ID is required (set default or add to CSV)"],
+          isValid: false,
+        };
+      } else {
+        // Remove provider errors if now valid
+        const filteredErrors = (user.errors || []).filter((e) => !e.includes("Provider ID"));
+        return {
+          ...user,
+          errors: filteredErrors,
+          isValid: filteredErrors.length === 0,
+        };
+      }
+    });
+
+    setUsers(updatedUsers);
+  }, [selectedProviderId]);
+
+  const handleFileSelect = useCallback(
+    async (file: File) => {
+      if (!file.name.endsWith(".csv")) {
+        setParseErrors(["Please select a CSV file"]);
+        return;
+      }
+
+      try {
+        const content = await readFileAsText(file);
+        const result = parseCsv(content);
+
+        // Validate provider requirement based on current default provider selection
+        const validatedUsers = result.users.map((user) => {
+          const hasProviderInRow = user.providerId !== undefined && user.providerId !== null;
+          const hasDefaultProvider = selectedProviderId !== null;
+          const needsProvider = !hasProviderInRow && !hasDefaultProvider;
+
+          if (needsProvider) {
+            return {
+              ...user,
+              errors: [...(user.errors || []), "Provider ID is required (set default or add to CSV)"],
+              isValid: false,
+            };
+          }
+          return user;
+        });
+
+        setUsers(validatedUsers);
+        setParseErrors(result.errors);
+        setParseWarnings(result.warnings);
+      } catch (error) {
+        setParseErrors([`Failed to read file: ${error instanceof Error ? error.message : "Unknown error"}`]);
+      }
+    },
+    [selectedProviderId]
+  );
 
   const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -253,22 +301,38 @@ function ImportPage() {
           <CardDescription>Configure import options and upload users to SafeQ Cloud</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-wrap items-center gap-4 mb-4">
-            <div className="flex items-center gap-2">
-              <Label className="text-sm font-medium">Default Provider:</Label>
-              <select
-                value={selectedProviderId || ""}
-                onChange={(e) => setSelectedProviderId(e.target.value ? parseInt(e.target.value, 10) : null)}
-                className="rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              >
-                <option value="">None (use CSV value)</option>
-                {providers.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}
-                  </option>
-                ))}
-              </select>
+          {/* Default Provider Section */}
+          <div className="mb-6 rounded-lg border border-muted-foreground/30 bg-muted/30 p-4">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="h-5 w-5 text-muted-foreground mt-0.5 flex-shrink-0" />
+              <div className="flex-1">
+                <h3 className="text-sm font-semibold mb-2">Authentication Provider</h3>
+                <p className="text-sm text-muted-foreground mb-3">
+                  Select the default authentication provider for all imported users. Users without a ProviderID in the CSV will use this value.
+                  {selectedProviderId === null && (
+                    <span className="block mt-1 font-medium text-foreground">⚠️ All rows must have ProviderID in CSV when default is "None"</span>
+                  )}
+                </p>
+                <div className="flex items-center gap-2">
+                  <Label className="text-sm font-medium">Default Provider:</Label>
+                  <select
+                    value={selectedProviderId || ""}
+                    onChange={(e) => setSelectedProviderId(e.target.value ? parseInt(e.target.value, 10) : null)}
+                    className="rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    <option value="">None (ProviderID required in CSV)</option>
+                    {providers.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
             </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-4 mb-4">
             <label className="flex cursor-pointer items-center gap-2">
               <input
                 type="checkbox"
