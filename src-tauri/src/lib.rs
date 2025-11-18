@@ -4,6 +4,8 @@ mod safeq_api;
 mod settings;
 mod url_utils;
 
+use tauri::Manager;
+
 #[tauri::command]
 fn get_safeq_settings(app: tauri::AppHandle) -> Result<Option<settings::SafeQSettings>, String> {
     settings::load_safeq_settings(&app).map_err(|error| error.to_string())
@@ -343,14 +345,78 @@ async fn send_graph_emails(
     }))
 }
 
+#[tauri::command]
+async fn close_splashscreen(app: tauri::AppHandle) -> Result<(), String> {
+    let main_window = if let Some(main_window) = app.get_webview_window("main") {
+        println!("Main window already exists, showing it");
+        // Main window already exists, just show it
+        main_window.show().map_err(|e| e.to_string())?;
+        main_window
+    } else {
+        // Create the main window
+        let main_url = if cfg!(dev) {
+            "http://localhost:1420/"
+        } else {
+            "index.html"
+        };
+
+        let window = tauri::WebviewWindowBuilder::new(
+            &app,
+            "main",
+            tauri::WebviewUrl::External(main_url.parse().unwrap()),
+        )
+        .title("SAFEQ Cloud User Manager")
+        .inner_size(1200.0, 800.0)
+        .center()
+        .build()
+        .map_err(|e| e.to_string())?;
+
+        window.show().map_err(|e| e.to_string())?;
+        window
+    };
+
+    // Focus the main window
+    main_window.set_focus().map_err(|e| e.to_string())?;
+
+    // Close the splashscreen window AFTER main window is shown
+    if let Some(splashscreen) = app.get_webview_window("splashscreen") {
+        splashscreen.close().map_err(|e| e.to_string())?;
+    }
+
+    Ok(())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_store::Builder::default().build())
-        .plugin(tauri_plugin_window_state::Builder::default().build())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
+        .setup(|app| {
+            // Create the splash screen window first
+            let splash_url = if cfg!(dev) {
+                "http://localhost:1420/splash.html"
+            } else {
+                "splash.html"
+            };
+
+            tauri::WebviewWindowBuilder::new(
+                app,
+                "splashscreen",
+                tauri::WebviewUrl::External(splash_url.parse().unwrap()),
+            )
+            .title("SAFEQ Cloud User Manager")
+            .inner_size(600.0, 400.0)
+            .resizable(false)
+            .decorations(false)
+            .always_on_top(true)
+            .skip_taskbar(true)
+            .center()
+            .build()?;
+
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             get_safeq_settings,
             list_safeq_users,
@@ -364,7 +430,8 @@ pub fn run() {
             generate_bulk_pins,
             generate_bulk_otps,
             create_users,
-            send_graph_emails
+            send_graph_emails,
+            close_splashscreen
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
